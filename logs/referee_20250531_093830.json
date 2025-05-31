@@ -1,0 +1,289 @@
+{
+  "match_info": {
+    "fixture": {
+      "id": 1374812,
+      "referee": "I. Kovács",
+      "timezone": "UTC",
+      "date": "2025-05-31T19:00:00+00:00",
+      "timestamp": 1748718000,
+      "periods": {
+        "first": null,
+        "second": null
+      },
+      "venue": {
+        "id": 700,
+        "name": "Allianz Arena",
+        "city": "München"
+      },
+      "status": {
+        "long": "Not Started",
+        "short": "NS",
+        "elapsed": null,
+        "extra": null
+      }
+    },
+    "league": {
+      "id": 2,
+      "name": "UEFA Champions League",
+      "country": "World",
+      "logo": "https://media.api-sports.io/football/leagues/2.png",
+      "flag": null,
+      "season": 2024,
+      "round": "Final",
+      "standings": true
+    },
+    "teams": {
+      "home": {
+        "id": 85,
+        "name": "Paris Saint Germain",
+        "logo": "https://media.api-sports.io/football/teams/85.png",
+        "winner": null
+      },
+      "away": {
+        "id": 505,
+        "name": "Inter",
+        "logo": "https://media.api-sports.io/football/teams/505.png",
+        "winner": null
+      }
+    },
+    "goals": {
+      "home": null,
+      "away": null
+    },
+    "score": {
+      "halftime": {
+        "home": null,
+        "away": null
+      },
+      "fulltime": {
+        "home": null,
+        "away": null
+      },
+      "extratime": {
+        "home": null,
+        "away": null
+      },
+      "penalty": {
+        "home": null,
+        "away": null
+      }
+    },
+    "events": [],
+    "lineups": [],
+    "statistics": [],
+    "players": []
+  },
+  "statistics": {},
+  "h2h": [
+    {
+      "fixture": {
+        "id": 255687,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2016-07-24T21:00:00+00:00",
+        "timestamp": 1469394000,
+        "periods": {
+          "first": 1469394000,
+          "second": 1469397600
+        },
+        "venue": {
+          "id": null,
+          "name": "Autzen Stadium (Eugene, Oregon)",
+          "city": null
+        },
+        "status": {
+          "long": "Match Finished",
+          "short": "FT",
+          "elapsed": 90,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 26,
+        "name": "International Champions Cup",
+        "country": "World",
+        "logo": "https://media.api-sports.io/football/leagues/26.png",
+        "flag": null,
+        "season": 2016,
+        "round": "North America - 1",
+        "standings": false
+      },
+      "teams": {
+        "home": {
+          "id": 505,
+          "name": "Inter",
+          "logo": "https://media.api-sports.io/football/teams/505.png",
+          "winner": false
+        },
+        "away": {
+          "id": 85,
+          "name": "Paris Saint Germain",
+          "logo": "https://media.api-sports.io/football/teams/85.png",
+          "winner": true
+        }
+      },
+      "goals": {
+        "home": 1,
+        "away": 3
+      },
+      "score": {
+        "halftime": {
+          "home": 1,
+          "away": 1
+        },
+        "fulltime": {
+          "home": 1,
+          "away": 3
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      }
+    },
+    {
+      "fixture": {
+        "id": 1030322,
+        "referee": "J. Iida",
+        "timezone": "UTC",
+        "date": "2023-08-01T10:00:00+00:00",
+        "timestamp": 1690884000,
+        "periods": {
+          "first": 1690884000,
+          "second": 1690887600
+        },
+        "venue": {
+          "id": null,
+          "name": "Japan National Stadium",
+          "city": "Tokyo"
+        },
+        "status": {
+          "long": "Match Finished",
+          "short": "FT",
+          "elapsed": 90,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 667,
+        "name": "Friendlies Clubs",
+        "country": "World",
+        "logo": "https://media.api-sports.io/football/leagues/667.png",
+        "flag": null,
+        "season": 2023,
+        "round": "Club Friendlies 1",
+        "standings": false
+      },
+      "teams": {
+        "home": {
+          "id": 85,
+          "name": "Paris Saint Germain",
+          "logo": "https://media.api-sports.io/football/teams/85.png",
+          "winner": false
+        },
+        "away": {
+          "id": 505,
+          "name": "Inter",
+          "logo": "https://media.api-sports.io/football/teams/505.png",
+          "winner": true
+        }
+      },
+      "goals": {
+        "home": 1,
+        "away": 2
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": 1,
+          "away": 2
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      }
+    },
+    {
+      "fixture": {
+        "id": 1374812,
+        "referee": "I. Kovács",
+        "timezone": "UTC",
+        "date": "2025-05-31T19:00:00+00:00",
+        "timestamp": 1748718000,
+        "periods": {
+          "first": null,
+          "second": null
+        },
+        "venue": {
+          "id": 700,
+          "name": "Allianz Arena",
+          "city": "München"
+        },
+        "status": {
+          "long": "Not Started",
+          "short": "NS",
+          "elapsed": null,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 2,
+        "name": "UEFA Champions League",
+        "country": "World",
+        "logo": "https://media.api-sports.io/football/leagues/2.png",
+        "flag": null,
+        "season": 2024,
+        "round": "Final",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 85,
+          "name": "Paris Saint Germain",
+          "logo": "https://media.api-sports.io/football/teams/85.png",
+          "winner": null
+        },
+        "away": {
+          "id": 505,
+          "name": "Inter",
+          "logo": "https://media.api-sports.io/football/teams/505.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": null,
+        "away": null
+      },
+      "score": {
+        "halftime": {
+          "home": null,
+          "away": null
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      }
+    }
+  ]
+}

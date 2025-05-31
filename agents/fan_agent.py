@@ -1,21 +1,21 @@
 from .base_agent import BaseAgent
 from typing import Dict, List
 
-class CoachAgent(BaseAgent):
+class FanAgent(BaseAgent):
     def __init__(self):
-        system_prompt = """Du är en erfaren fotbollstränare med expertis i taktik och lagbyggande.
+        system_prompt = """Du är en passionerad fotbollsfan med djup känsla för sporten.
         Din roll är att:
-        - Analysera formationer och spelsystem
-        - Bedöma pressintensitet och återtagningar
-        - Utvärdera byten och taktiska justeringar
-        - Ge insikter om lagdynamik och spelarroller
-        - Föreslå taktiska förbättringar
+        - Ge emotionella och engagerade kommentarer
+        - Beskriva matchstämning och atmosfär
+        - Reagera på viktiga matchhändelser
+        - Visa laglojalitet och passion
+        - Ge en fans perspektiv på matchen
         
-        Var strategisk och fokusera på taktiska aspekter av spelet."""
+        Var engagerad och entusiastisk, men respektfull. Använd gärna fotbollsslang och uttryck som en riktig supporter skulle använda."""
         
         super().__init__(
-            name="Tränare",
-            role="Taktisk Expert",
+            name="Supporter",
+            role="Fans Röst",
             system_prompt=system_prompt
         )
     
@@ -24,23 +24,23 @@ class CoachAgent(BaseAgent):
             return "Jag har tyvärr ingen matchdata att analysera just nu."
             
         # Extract relevant data
-        formation = data.get("formation", {})
-        team_stats = data.get("team_stats", {})
-        player_stats = data.get("player_stats", {})
+        match_info = data.get("match_info", {})
+        statistics = data.get("statistics", {})
         h2h = data.get("h2h", [])
+        team_stats = data.get("team_stats", {})
         recent_form = data.get("recent_form", {})
         
         # Create a detailed prompt for analysis
-        prompt = f"""Analysera följande matchdata och ge taktiska insikter:
+        prompt = f"""Som en passionerad supporter, ge dina tankar om följande:
 
-FORMATION:
-{self._format_formation(formation)}
+MATCHINFORMATION:
+{self._format_match_info(match_info)}
+
+MATCHSTATISTIK:
+{self._format_statistics(statistics)}
 
 LAGSTATISTIK:
 {self._format_team_stats(team_stats)}
-
-SPELARSTATISTIK:
-{self._format_player_stats(player_stats)}
 
 SENASTE FORM:
 {self._format_recent_form(recent_form)}
@@ -48,16 +48,29 @@ SENASTE FORM:
 H2H STATISTIK:
 {self._format_h2h(h2h)}
 
-Ge en detaljerad taktisk analys av matchen, med fokus på formationer, press och lagdynamik."""
+Ge en engagerad och passionerad analys från en supporters perspektiv!"""
         
         return self.get_response(prompt)
     
-    def _format_formation(self, formation: Dict) -> str:
-        if not formation:
-            return "Ingen formationsinformation tillgänglig"
+    def _format_match_info(self, info: Dict) -> str:
+        if not info:
+            return "Ingen matchinformation tillgänglig"
             
-        return f"""Hemmalag: {formation.get('home', '')}
-Bortalag: {formation.get('away', '')}"""
+        return f"""Match: {info.get('teams', {}).get('home', {}).get('name', '')} vs {info.get('teams', {}).get('away', {}).get('name', '')}
+Liga: {info.get('league', {}).get('name', '')}
+Datum: {info.get('fixture', {}).get('date', '')}
+Status: {info.get('fixture', {}).get('status', {}).get('long', '')}
+Stadion: {info.get('fixture', {}).get('venue', {}).get('name', 'N/A')}"""
+    
+    def _format_statistics(self, stats: Dict) -> str:
+        if not stats:
+            return "Ingen matchstatistik tillgänglig"
+            
+        return f"""Ballinnehav: {stats.get('possession', {})}
+Skott: {stats.get('shots', {})}
+Expected Goals: {stats.get('expected_goals', {})}
+Passningar: {stats.get('passes', {})}
+Press: {stats.get('pressures', {})}"""
     
     def _format_team_stats(self, stats: Dict) -> str:
         if not stats:
@@ -68,24 +81,13 @@ Bortalag: {formation.get('away', '')}"""
         
         return f"""HEMMALAG:
 Form: {home.get('form', '')}
-Press: {home.get('pressures', {})}
-Återtagningar: {home.get('tackles', {})}
-Passningar: {home.get('passes', {})}
+Mål: {home.get('goals', {}).get('for', {}).get('total', {})}
+Insläppta mål: {home.get('goals', {}).get('against', {}).get('total', {})}
 
 BORTALAG:
 Form: {away.get('form', '')}
-Press: {away.get('pressures', {})}
-Återtagningar: {away.get('tackles', {})}
-Passningar: {away.get('passes', {})}"""
-    
-    def _format_player_stats(self, stats: Dict) -> str:
-        if not stats:
-            return "Ingen spelarstatistik tillgänglig"
-            
-        return f"""Målskyttar: {stats.get('top_scorers', [])}
-Assistgivare: {stats.get('top_assists', [])}
-Passningsprocent: {stats.get('pass_accuracy', {})}
-Återtagningar: {stats.get('tackles', {})}"""
+Mål: {away.get('goals', {}).get('for', {}).get('total', {})}
+Insläppta mål: {away.get('goals', {}).get('against', {}).get('total', {})}"""
     
     def _format_recent_form(self, form: Dict) -> str:
         if not form:
@@ -125,12 +127,11 @@ BORTALAG SENASTE MATCHER:
             
         return f"Senaste möten: {', '.join(matches)}"
     
-    def suggest_tactical_change(self, current_formation: str, situation: str) -> str:
-        """Suggest a tactical change based on the current situation"""
-        prompt = f"""Med tanke på följande situation:
-        Nuvarande formation: {current_formation}
-        Situation: {situation}
+    def react_to_event(self, event: str, emotion: str) -> str:
+        """React to a specific match event with a given emotion"""
+        prompt = f"""Som supporter, reagerar på följande händelse med {emotion} känsla:
+        Händelse: {event}
         
-        Föreslå en taktisk justering som kan förbättra lagets prestation."""
+        Ge en känslosam och autentisk supporterreaktion."""
         
-        return self.get_response(prompt)
+        return self.get_response(prompt) 

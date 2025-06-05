@@ -1,0 +1,6 @@
+{
+  "speaker": "Stats Analyst",
+  "error": "Error creating video segment for Stats Analyst: Failed to create video: {\"kind\":\"InsufficientCreditsError\",\"description\":\"not enough credits\"}",
+  "status": "failed",
+  "timestamp": "2025-06-03T22:26:20.036510"
+}

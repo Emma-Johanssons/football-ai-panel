@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: football-ai-panel
+Version: 0.1.0
+Requires-Python: >=3.8
+Requires-Dist: gtts
+Requires-Dist: python-dotenv
+Requires-Dist: requests
+Requires-Dist: asyncio

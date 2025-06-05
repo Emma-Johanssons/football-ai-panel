@@ -1,0 +1,4 @@
+gtts
+python-dotenv
+requests
+asyncio

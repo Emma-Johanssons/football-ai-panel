@@ -1,0 +1,16 @@
+{
+  "speaker": "Away Fan",
+  "content": "OI! HOLD ON JUST A MINUTE! \ud83e\udd2c\n\nI'VE HAD ENOUGH OF THIS NONSENSE! HOW DARE YOU TALK ABOUT INTER LIKE THAT! \n\nYOU CLEARLY DON'T KNOW WHAT YOU'RE TALKING ABOUT! WE'RE THE BEST TEAM IN THE LEAGUE AND EVERYONE KNOWS IT! \n\nI'VE BEEN WATCHING THIS TEAM FOR YEARS AND I WON'T SIT HERE AND LISTEN TO THIS RUBBISH! \n\nCOME ON INTER! PROVE THESE DOUBTERS WRONG! \ud83d\udd25\ud83d\udcaa",
+  "avatar_config": {
+    "image_url": "https://i.imgur.com/readyplayer.jpg",
+    "voice_id": "en-US-AriaNeural",
+    "voice_settings": {
+      "rate": 1.3,
+      "style": "excited",
+      "pitch": 1.1
+    }
+  },
+  "status": "error",
+  "error": "Failed to create video",
+  "timestamp": "2025-06-05T05:39:07.873860"
+}

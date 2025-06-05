@@ -1,0 +1,16 @@
+{
+  "speaker": "Stats Analyst",
+  "content": "Let me break down the key statistics for Paris Saint Germain vs Inter.\n\nRecent Form:\n- Paris Saint Germain: WLDLLWWWWWLWWLWWW (Last 5 matches)\n- Inter: DWWWWLWWWWWDDWL (Last 5 matches)\n\nKey Insights:\n- Paris Saint Germain scores an average of {'home': 24, 'away': 14, 'total': 38} goals per game\n- Inter scores an average of {'home': 17, 'away': 9, 'total': 26} goals per game\n\nBased on these statistics, Paris Saint Germain appears to have a slight statistical advantage.",
+  "avatar_config": {
+    "image_url": "https://i.imgur.com/FgSDbBC.png",
+    "voice_id": "en-GB-RyanNeural",
+    "voice_settings": {
+      "rate": 1.0,
+      "style": "analytical",
+      "pitch": 0.9
+    }
+  },
+  "status": "error",
+  "error": "Failed to create video",
+  "timestamp": "2025-06-05T07:34:46.429227"
+}

@@ -2,11 +2,14 @@
 import os
 import requests
 import json
+import aiohttp
+import asyncio
 from typing import Dict, Optional, List, Union
 from datetime import datetime
 from dotenv import load_dotenv
 import logging
 import time
+from services.data_store import DataStore
 
 # Load environment variables
 load_dotenv()
@@ -35,68 +38,326 @@ class MatchService:
         # Initialize cache for frequently accessed data
         self.cache = {}
         
-        # Test API key validity
-        self._test_api_key()
+        self.data_store = DataStore()
+        
+    @classmethod
+    async def create(cls):
+        """Factory method to create and initialize a MatchService instance"""
+        service = cls()
+        await service._test_api_key()
+        return service
     
-    def _test_api_key(self):
+    async def _test_api_key(self):
         """Test API key validity during initialization."""
         try:
-            response = requests.get(
-                f"{self.base_url}/status",
-                headers=self.headers,
-                timeout=30
-            )
-            if response.status_code != 200:
-                raise ValueError("Invalid API key")
-            logger.info("API key validation successful")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.base_url}/status",
+                    headers=self.headers,
+                    timeout=30
+                ) as response:
+                    if response.status != 200:
+                        raise ValueError("Invalid API key")
+                    logger.info("API key validation successful")
         except Exception as e:
             logger.error(f"API key validation failed: {str(e)}")
             raise ValueError(f"API key validation failed: {str(e)}")
     
-    def _make_request(self, endpoint: str, params: dict = None) -> Optional[Dict]:
+    async def _make_request(self, endpoint: str, params: dict = None) -> Optional[Dict]:
         """Make a request to the API with retry logic."""
         url = f"{self.base_url}/{endpoint}"
         
         for attempt in range(self.retry_settings['max_retries']):
             try:
                 logger.info(f"Making API request to {url} with params: {params}")
-                response = requests.get(url, headers=self.headers, params=params, timeout=30)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get('errors'):
-                        logger.error(f"API returned errors: {data['errors']}")
-                        return None
-                    return data
-                elif response.status_code == 429:  # Rate limit exceeded
-                    retry_after = int(response.headers.get('Retry-After', self.retry_settings['base_delay']))
-                    logger.warning(f"Rate limit exceeded. Retrying after {retry_after} seconds")
-                    time.sleep(retry_after)
-                    continue
-                else:
-                    logger.error(f"API request failed with status {response.status_code}")
-                    return None
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=self.headers, params=params, timeout=30) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if data.get('errors'):
+                                logger.error(f"API returned errors: {data['errors']}")
+                                return None
+                            return data
+                        elif response.status == 429:  # Rate limit exceeded
+                            retry_after = int(response.headers.get('Retry-After', self.retry_settings['base_delay']))
+                            logger.warning(f"Rate limit exceeded. Retrying after {retry_after} seconds")
+                            await asyncio.sleep(retry_after)
+                            continue
+                        else:
+                            logger.error(f"API request failed with status {response.status}")
+                            return None
                     
-            except requests.exceptions.RequestException as e:
+            except Exception as e:
                 logger.error(f"Request failed: {str(e)}")
                 if attempt < self.retry_settings['max_retries'] - 1:
                     delay = min(self.retry_settings['base_delay'] * (2 ** attempt), self.retry_settings['max_delay'])
                     logger.info(f"Retrying in {delay} seconds...")
-                    time.sleep(delay)
+                    await asyncio.sleep(delay)
                     continue
                 return None
-    
-    def get_match_info(self, match_id: str) -> Optional[Dict]:
+
+    async def get_match_data(self, match_id: str) -> Optional[Dict]:
+        """Get comprehensive match data"""
+        try:
+            # Get basic match data
+            response = await self._make_request(f"fixtures?id={match_id}")
+            if not response or not response.get("response"):
+                print("❌ No match data found")
+                return None
+                
+            # Get the main fixture data
+            fixture_data = response.get("response", [{}])[0]
+            
+            # Get team IDs for h2h
+            home_team_id = fixture_data.get("teams", {}).get("home", {}).get("id")
+            away_team_id = fixture_data.get("teams", {}).get("away", {}).get("id")
+            
+            # Fetch head-to-head data
+            h2h_data = None
+            if home_team_id and away_team_id:
+                h2h_data = await self._get_head_to_head_history(home_team_id, away_team_id)
+            
+            # Get lineups
+            lineups_response = await self._make_request(f"fixtures/lineups?fixture={match_id}")
+            lineups = lineups_response.get("response", []) if lineups_response else []
+            
+            # Get events
+            events_response = await self._make_request(f"fixtures/events?fixture={match_id}")
+            events = events_response.get("response", []) if events_response else []
+            
+            # Get player statistics
+            players_response = await self._make_request(f"fixtures/players?fixture={match_id}")
+            player_statistics = players_response.get("response", []) if players_response else []
+            
+            # Get team statistics
+            stats_response = await self._make_request(f"fixtures/statistics?fixture={match_id}")
+            team_statistics = stats_response.get("response", []) if stats_response else []
+            
+            # Combine all data
+            raw_data = {
+                "response": [fixture_data],
+                "lineups": lineups,
+                "events": events,
+                "player_statistics": player_statistics,
+                "team_statistics": team_statistics,
+                "h2h": h2h_data or {}
+            }
+            
+            # Process the raw data
+            match_data = self._process_match_data(raw_data)
+            
+            # Validate the processed data
+            if not self._validate_match_data(match_data):
+                print("❌ Invalid match data structure")
+                return None
+                
+            # Get additional match details
+            match_details = await self._fetch_match_details(match_id)
+            if match_details:
+                match_data.update(match_details)
+                
+            return match_data
+            
+        except Exception as e:
+            print(f"❌ Error getting match data: {e}")
+            return None
+            
+    def _process_match_data(self, raw_data: Dict) -> Dict:
+        """Process and format raw match data"""
+        try:
+            # Get the main fixture data
+            fixture_data = raw_data.get("response", [{}])[0]
+            
+            # Extract required core data
+            fixture = fixture_data.get("fixture", {})
+            teams = fixture_data.get("teams", {})
+            goals = fixture_data.get("goals", {})
+            score = fixture_data.get("score", {})
+            
+            # Get additional data
+            lineups = raw_data.get("lineups", [])
+            events = raw_data.get("events", [])
+            player_statistics = raw_data.get("player_statistics", [])
+            team_statistics = raw_data.get("team_statistics", [])
+            h2h_data = raw_data.get("h2h", {})
+            
+            # Process player statistics
+            player_stats = {
+                "home": [],
+                "away": []
+            }
+            
+            # Process lineups and player stats
+            for lineup in lineups:
+                team_id = lineup.get("team", {}).get("id")
+                side = "home" if team_id == teams.get("home", {}).get("id") else "away"
+                
+                # Add starting XI with their statistics
+                for player in lineup.get("startXI", []):
+                    player_data = player.get("player", {})
+                    # Find player's statistics
+                    player_match_stats = next(
+                        (stats for stats in player_statistics 
+                         if stats.get("player", {}).get("id") == player_data.get("id")),
+                        {}
+                    )
+                    
+                    player_stats[side].append({
+                        "id": player_data.get("id"),
+                        "name": player_data.get("name"),
+                        "number": player_data.get("number"),
+                        "position": player_data.get("pos", player_data.get("position")),
+                        "is_starter": True,
+                        "statistics": player_match_stats.get("statistics", []),
+                        "rating": player_match_stats.get("statistics", [{}])[0].get("games", {}).get("rating", 0)
+                    })
+                
+                # Add substitutes with their statistics
+                for player in lineup.get("substitutes", []):
+                    player_data = player.get("player", {})
+                    # Find player's statistics
+                    player_match_stats = next(
+                        (stats for stats in player_statistics 
+                         if stats.get("player", {}).get("id") == player_data.get("id")),
+                        {}
+                    )
+                    
+                    player_stats[side].append({
+                        "id": player_data.get("id"),
+                        "name": player_data.get("name"),
+                        "number": player_data.get("number"),
+                        "position": player_data.get("pos", player_data.get("position")),
+                        "is_starter": False,
+                        "statistics": player_match_stats.get("statistics", []),
+                        "rating": player_match_stats.get("statistics", [{}])[0].get("games", {}).get("rating", 0)
+                    })
+            
+            # Process team statistics
+            formatted_team_stats = {"home": {}, "away": {}}
+            for team_stat in team_statistics:
+                team_id = team_stat.get("team", {}).get("id")
+                side = "home" if team_id == teams.get("home", {}).get("id") else "away"
+                
+                stats = {}
+                for stat in team_stat.get("statistics", []):
+                    stat_type = stat.get("type")
+                    stat_value = stat.get("value")
+                    
+                    # Convert percentage strings to numbers
+                    if isinstance(stat_value, str) and "%" in stat_value:
+                        try:
+                            stat_value = float(stat_value.strip("%"))
+                        except ValueError:
+                            pass
+                            
+                    stats[stat_type] = stat_value
+                    
+                formatted_team_stats[side] = stats
+            
+            # Create the properly structured match data
+            processed_data = {
+                "fixture": fixture,  # Required field
+                "teams": teams,      # Required field
+                "goals": goals,      # Required field
+                "score": score,      # Required field
+                "match_info": {
+                    "fixture": fixture,
+                    "teams": teams,
+                    "goals": goals,
+                    "score": score,
+                    "league": fixture_data.get("league", {}),
+                    "venue": fixture.get("venue", {}),
+                    "referee": fixture.get("referee"),
+                    "status": fixture.get("status", {})
+                },
+                "lineups": lineups,
+                "events": events,
+                "player_stats": player_stats,
+                "team_stats": formatted_team_stats,
+                "h2h": {
+                    "history": h2h_data.get("matches", []),
+                    "summary": h2h_data.get("stats", {})
+                },
+                "details": {
+                    "formations": self._extract_formations(lineups),
+                    "possession": self._extract_possession(formatted_team_stats),
+                    "key_stats": {
+                        "shots": {
+                            "home": formatted_team_stats.get("home", {}).get("Total Shots", 0),
+                            "away": formatted_team_stats.get("away", {}).get("Total Shots", 0)
+                        },
+                        "shots_on_target": {
+                            "home": formatted_team_stats.get("home", {}).get("Shots on Goal", 0),
+                            "away": formatted_team_stats.get("away", {}).get("Shots on Goal", 0)
+                        },
+                        "passes": {
+                            "home": formatted_team_stats.get("home", {}).get("Total Passes", 0),
+                            "away": formatted_team_stats.get("away", {}).get("Total Passes", 0)
+                        },
+                        "pass_accuracy": {
+                            "home": formatted_team_stats.get("home", {}).get("Passes %", 0),
+                            "away": formatted_team_stats.get("away", {}).get("Passes %", 0)
+                        }
+                    }
+                }
+            }
+            
+            return processed_data
+            
+        except Exception as e:
+            print(f"Error processing match data: {e}")
+            return {}
+            
+    def _extract_formations(self, lineups: list) -> Dict:
+        """Extract team formations from lineups data"""
+        formations = {"home": None, "away": None}
+        for lineup in lineups:
+            team = lineup.get("team", {})
+            side = "home" if team.get("id") == lineup.get("team_id") else "away"
+            formations[side] = lineup.get("formation")
+        return formations
+        
+    def _extract_possession(self, team_stats: Dict) -> Dict:
+        """Extract possession stats from team statistics"""
+        try:
+            home_possession = team_stats.get("home", {}).get("Ball Possession", 0)
+            away_possession = team_stats.get("away", {}).get("Ball Possession", 0)
+            
+            # Handle percentage strings
+            if isinstance(home_possession, str):
+                home_possession = float(home_possession.strip("%"))
+            if isinstance(away_possession, str):
+                away_possession = float(away_possession.strip("%"))
+                
+            # If we only have one value, calculate the other
+            if home_possession and not away_possession:
+                away_possession = 100 - home_possession
+            elif away_possession and not home_possession:
+                home_possession = 100 - away_possession
+            # If we have neither, default to 50-50
+            elif not home_possession and not away_possession:
+                home_possession = away_possession = 50
+                
+            return {
+                "home": home_possession,
+                "away": away_possession
+            }
+            
+        except Exception as e:
+            print(f"Error extracting possession stats: {e}")
+            return {"home": 50, "away": 50}  # Default to 50-50
+
+    async def get_match_info(self, match_id: str) -> Optional[Dict]:
         """Get comprehensive match information"""
         try:
             # Fetch basic match data
-            match_data = self._fetch_match_data(match_id)
+            match_data = await self.get_match_data(match_id)
             if not match_data:
                 print(f"❌ Failed to fetch basic match data for ID: {match_id}")
                 return None
                 
             # Validate core match data
-            required_fields = ['fixture', 'league', 'teams', 'goals', 'score']
+            required_fields = ['fixture', 'teams', 'goals', 'score']
             missing_fields = [field for field in required_fields if field not in match_data]
             if missing_fields:
                 print(f"❌ Missing required fields in match data: {missing_fields}")
@@ -104,7 +365,7 @@ class MatchService:
             
             # Fetch additional details
             try:
-                details = self._fetch_match_details(match_id, match_data)
+                details = await self._fetch_match_details(match_id)
                 if details:
                     match_data.update(details)
                     print(f"✅ Successfully fetched additional match details")
@@ -113,14 +374,9 @@ class MatchService:
             except Exception as e:
                 print(f"⚠️ Error fetching additional details: {e}")
             
-            # Validate team data
-            if not self._validate_team_data(match_data):
-                print(f"❌ Invalid team data in match response")
-                return None
-            
             # Extract and validate statistics
             try:
-                stats = self._extract_team_stats(match_data)
+                stats = await self._extract_team_stats(match_data)
                 if stats:
                     match_data["statistics"] = stats
                     print(f"✅ Successfully extracted team statistics")
@@ -135,7 +391,307 @@ class MatchService:
         except Exception as e:
             print(f"❌ Error in get_match_info: {e}")
             return None
-    
+        
+    async def _fetch_match_details(self, match_id: str) -> Optional[Dict]:
+        """Fetch detailed match information"""
+        try:
+            # Get lineups and formations
+            lineup_response = await self._make_request(f"fixtures/lineups?fixture={match_id}")
+            formations = {"home": "Unknown", "away": "Unknown"}
+            lineups = []
+            
+            if lineup_response and lineup_response.get('response'):
+                lineups = lineup_response['response']
+                # Process formations
+                for lineup in lineups:
+                    team = lineup.get('team', {})
+                    team_id = team.get('id')
+                    formation = lineup.get('formation')
+                    
+                    # Determine if home or away based on team ID
+                    is_home = team.get('name') == lineup_response['response'][0]['team']['name']
+                    team_type = 'home' if is_home else 'away'
+                    formations[team_type] = formation
+            
+            # Get player statistics
+            player_stats_response = await self._make_request(f"fixtures/players?fixture={match_id}")
+            player_stats = {}
+            if player_stats_response and player_stats_response.get('response'):
+                for team_stats in player_stats_response['response']:
+                    team = team_stats.get('team', {})
+                    team_id = team.get('id')
+                    if team_id:
+                        player_stats[team_id] = team_stats.get('players', [])
+            
+            # Get team statistics
+            stats_response = await self._make_request(f"fixtures/statistics?fixture={match_id}")
+            team_stats = {"home": [], "away": []}
+            if stats_response and stats_response.get('response'):
+                for team_stat in stats_response['response']:
+                    team = team_stat.get('team', {})
+                    team_id = team.get('id')
+                    # Determine if home or away based on first team in response
+                    is_home = team.get('name') == stats_response['response'][0]['team']['name']
+                    team_type = 'home' if is_home else 'away'
+                    team_stats[team_type] = team_stat.get('statistics', [])
+            
+            # Get events
+            events_response = await self._make_request(f"fixtures/events?fixture={match_id}")
+            events = []
+            if events_response and events_response.get('response'):
+                events = events_response['response']
+            
+            # Compile details
+            details = {
+                "formations": formations,
+                "lineups": lineups,
+                "player_statistics": player_stats,
+                "team_statistics": team_stats,
+                "events": events,
+                "venue": await self._get_venue_details(match_id),
+                "weather": await self._get_weather_details(match_id),
+                "referee": await self._get_referee_details(match_id)
+            }
+            
+            return details
+            
+        except Exception as e:
+            print(f"❌ Error in _fetch_match_details: {e}")
+            return None
+        
+    async def _format_team_statistics(self, basic_data: Dict, details: Dict) -> Optional[Dict]:
+        """Format team statistics"""
+        try:
+            # Get team statistics from details
+            team_stats = details.get('team_statistics', {})
+            if not team_stats:
+                print("❌ No team statistics available")
+                return None
+            
+            # Format statistics for each team
+            formatted_stats = {"home": {}, "away": {}}
+            for team_type, stats in team_stats.items():
+                formatted_team_stats = {}
+                for stat in stats:
+                    stat_type = stat.get('type')
+                    stat_value = stat.get('value')
+                    
+                    # Convert percentage strings to numbers
+                    if isinstance(stat_value, str) and '%' in stat_value:
+                        try:
+                            stat_value = float(stat_value.rstrip('%'))
+                        except ValueError:
+                            pass
+                    
+                    formatted_team_stats[stat_type] = stat_value
+                
+                # Add expected goals if available
+                team_id = basic_data.get('teams', {}).get(team_type, {}).get('id')
+                if team_id:
+                    xg_data = await self._get_expected_goals(basic_data['fixture']['id'], team_id)
+                    if xg_data:
+                        formatted_team_stats.update(xg_data)
+                
+                formatted_stats[team_type] = formatted_team_stats
+            
+            return formatted_stats
+            
+        except Exception as e:
+            print(f"❌ Error formatting team statistics: {e}")
+            return None
+        
+    async def _extract_statistics(self, team_stats: Dict) -> Optional[Dict]:
+        """Extract and format statistics"""
+        try:
+            # Get base statistics
+            home_stats = team_stats.get("home", {})
+            away_stats = team_stats.get("away", {})
+            
+            if not home_stats or not away_stats:
+                print("❌ Missing team statistics")
+                return None
+            
+            # Get shots and shots on target
+            home_shots = float(home_stats.get("Total Shots", 0) or 0)
+            home_shots_on_target = float(home_stats.get("Shots on Goal", 0) or 0)
+            away_shots = float(away_stats.get("Total Shots", 0) or 0)
+            away_shots_on_target = float(away_stats.get("Shots on Goal", 0) or 0)
+            
+            # Calculate shot accuracy and conversion
+            home_shot_accuracy = round(home_shots_on_target / max(1, home_shots) * 100, 1)
+            away_shot_accuracy = round(away_shots_on_target / max(1, away_shots) * 100, 1)
+            
+            # Return formatted statistics
+            return {
+                "home": {
+                    **home_stats,
+                    "shot_accuracy": home_shot_accuracy
+                },
+                "away": {
+                    **away_stats,
+                    "shot_accuracy": away_shot_accuracy
+                }
+            }
+            
+        except Exception as e:
+            print(f"❌ Error extracting statistics: {e}")
+            return None
+
+    async def _extract_team_stats(self, match_data: Dict) -> Optional[Dict]:
+        """Extract and format team statistics"""
+        try:
+            # Fetch statistics
+            stats_response = await self._make_request(f"fixtures/statistics?fixture={match_data['fixture']['id']}")
+            if not stats_response or not stats_response.get('response'):
+                print(f"❌ No statistics available")
+                return None
+                
+            stats = stats_response['response']
+            formatted_stats = {"home": {}, "away": {}}
+            
+            # Process each team's statistics
+            for team_stats in stats:
+                team_id = team_stats.get('team', {}).get('id')
+                if not team_id:
+                    continue
+                    
+                # Determine if home or away team
+                team_type = 'home' if team_id == match_data['teams']['home']['id'] else 'away'
+                
+                # Extract all available statistics
+                team_statistics = {}
+                for stat in team_stats.get('statistics', []):
+                    stat_type = stat.get('type')
+                    stat_value = stat.get('value')
+                    
+                    # Convert percentage strings to numbers
+                    if isinstance(stat_value, str) and '%' in stat_value:
+                        try:
+                            stat_value = float(stat_value.rstrip('%'))
+                        except ValueError:
+                            pass
+                            
+                    team_statistics[stat_type] = stat_value
+                
+                # Add expected goals and goals prevented if available
+                xg_data = await self._get_expected_goals(match_data['fixture']['id'], team_id)
+                if xg_data:
+                    team_statistics.update(xg_data)
+                
+                formatted_stats[team_type] = team_statistics
+            
+            print(f"✅ Successfully formatted team statistics")
+            return formatted_stats
+            
+        except Exception as e:
+            print(f"❌ Error extracting team statistics: {e}")
+            return None
+
+    async def _get_expected_goals(self, fixture_id: int, team_id: int) -> Dict:
+        """Get expected goals data for a team"""
+        try:
+            response = await self._make_request(f"fixtures/statistics", params={
+                "fixture": fixture_id,
+                "team": team_id
+            })
+            
+            if not response or not response.get('response'):
+                print(f"⚠️ No expected goals data available")
+                return {
+                    "expected_goals": "0",
+                    "goals_prevented": "0"
+                }
+            
+            # Get the statistics array for this team
+            team_stats = response['response'][0].get('statistics', [])
+            
+            # Find expected goals in the statistics
+            expected_goals = "0"
+            goals_prevented = "0"
+            
+            for stat in team_stats:
+                if stat.get('type') == 'expected_goals':
+                    expected_goals = str(stat.get('value', '0'))
+                elif stat.get('type') == 'goals_prevented':
+                    goals_prevented = str(stat.get('value', '0'))
+            
+            return {
+                "expected_goals": expected_goals,
+                "goals_prevented": goals_prevented
+            }
+            
+        except Exception as e:
+            print(f"❌ Error getting expected goals: {e}")
+            return {
+                "expected_goals": "0",
+                "goals_prevented": "0"
+            }
+
+    async def _get_player_performances(self, match_id: str) -> Dict:
+        """Get detailed player statistics"""
+        try:
+            response = await self._make_request(f"fixtures/players?fixture={match_id}")
+            if not response or not response.get('response'):
+                return {}
+                
+            player_stats = {}
+            for team_stats in response['response']:
+                team_id = team_stats.get('team', {}).get('id')
+                if team_id:
+                    player_stats[team_id] = team_stats.get('players', [])
+                    
+            return player_stats
+            
+        except Exception as e:
+            print(f"❌ Error getting player performances: {e}")
+            return {}
+
+    async def _get_head_to_head_history(self, team_id1: int, team_id2: int) -> Optional[Dict]:
+        """Get head-to-head history between two teams"""
+        try:
+            response = await self._make_request(f"fixtures/headtohead?h2h={team_id1}-{team_id2}")
+            if not response or not response.get('response'):
+                return None
+                
+            matches = response['response']
+            
+            # Calculate statistics
+            home_wins = 0
+            away_wins = 0
+            for match in matches:
+                goals = match.get('goals', {})
+                if goals.get('home', 0) > goals.get('away', 0):
+                    home_wins += 1
+                elif goals.get('away', 0) > goals.get('home', 0):
+                    away_wins += 1
+                    
+            return {
+                'matches': matches,
+                'stats': {
+                    'total_matches': len(matches),
+                    'home_wins': home_wins,
+                    'away_wins': away_wins,
+                    'draws': len(matches) - home_wins - away_wins
+                }
+            }
+            
+        except Exception as e:
+            print(f"❌ Error getting head-to-head history: {e}")
+            return None
+
+    async def _get_match_lineups(self, match_id: str) -> Optional[List]:
+        """Get match lineups"""
+        try:
+            response = await self._make_request(f"fixtures/lineups?fixture={match_id}")
+            if not response or "response" not in response:
+                return None
+                
+            return response["response"]
+            
+        except Exception as e:
+            print(f"❌ Error getting match lineups: {e}")
+            return None
+
     def _validate_team_data(self, match_data: Dict) -> bool:
         """Validate team data structure"""
         try:
@@ -160,360 +716,28 @@ class MatchService:
         except Exception as e:
             print(f"❌ Error validating team data: {e}")
             return False
-    
-    def _fetch_match_data(self, match_id: str) -> Optional[Dict]:
-        """Fetch basic match data"""
-        try:
-            response = self._make_request(f"/fixtures?id={match_id}")
-            if not response or not response.get('response'):
-                print(f"❌ No response data for match ID: {match_id}")
-                return None
-                
-            match_data = response['response'][0]
-            print(f"✅ Successfully fetched basic match data")
-            return match_data
-            
-        except Exception as e:
-            print(f"❌ Error fetching match data: {e}")
-            return None
-    
-    def _fetch_match_details(self, match_id: str, match_data: Dict) -> Optional[Dict]:
-        """Fetch additional match details"""
-        try:
-            # Fetch events
-            events_response = self._make_request(f"/fixtures/events?fixture={match_id}")
-            events = events_response.get('response', []) if events_response else []
-            
-            # Fetch lineups with formations
-            lineups_response = self._make_request(f"/fixtures/lineups?fixture={match_id}")
-            lineups = []
-            formations = {"home": "Unknown", "away": "Unknown"}
-            
-            if lineups_response and 'response' in lineups_response:
-                for lineup in lineups_response['response']:
-                    team_type = 'home' if lineup.get('team', {}).get('id') == match_data['teams']['home']['id'] else 'away'
-                    if 'formation' in lineup:
-                        formations[team_type] = lineup['formation']
-                    lineups.append(lineup)
-            
-            details = {
-                'events': events,
-                'lineups': lineups,
-                'formations': formations
-            }
-            
-            # Validate details
-            if not events and not lineups:
-                print(f"⚠️ No additional details available")
-                return None
-                
-            return details
-            
-        except Exception as e:
-            print(f"❌ Error fetching match details: {e}")
-            return None
-    
-    def _extract_team_stats(self, match_data: Dict) -> Optional[Dict]:
-        """Extract and format team statistics"""
-        try:
-            # Fetch statistics
-            stats_response = self._make_request(f"/fixtures/statistics?fixture={match_data['fixture']['id']}")
-            if not stats_response or not stats_response.get('response'):
-                print(f"❌ No statistics available")
-                return None
-                
-            stats = stats_response['response']
-            formatted_stats = {"home": {}, "away": {}}
-            
-            # Process each team's statistics
-            for team_stats in stats:
-                team_id = team_stats.get('team', {}).get('id')
-                if not team_id:
-                    continue
-                    
-                # Determine if home or away team
-                team_type = 'home' if team_id == match_data['teams']['home']['id'] else 'away'
-                
-                # Format basic statistics
-                formatted_stats[team_type] = {
-                    "formation": match_data.get('formations', {}).get(team_type, "Unknown"),
-                    "possession": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                     if stat.get('type') == 'Ball Possession'), "0"),
-                    "passes": {
-                        "total": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                    if stat.get('type') == 'Total passes'), "0"),
-                        "accuracy": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                       if stat.get('type') == 'Passes accurate'), "0")
-                    },
-                    "shots": {
-                        "total": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                    if stat.get('type') == 'Total Shots'), "0"),
-                        "on_target": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                        if stat.get('type') == 'Shots on Goal'), "0")
-                    },
-                    "tackles": {
-                        "total": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                    if stat.get('type') == 'Tackles'), "0"),
-                        "success_rate": next((stat.get('value') for stat in team_stats.get('statistics', []) 
-                                           if stat.get('type') == 'Tackles success rate'), "0")
-                    }
-                }
-            
-            print(f"✅ Successfully formatted team statistics")
-            return formatted_stats
-            
-        except Exception as e:
-            print(f"❌ Error extracting team statistics: {e}")
-            return None
 
-    def get_match_data(self, match_id: str) -> Optional[Dict]:
-        """Get comprehensive match data including current rosters"""
-        try:
-            # Check cache first
-            cache_key = f"match_{match_id}"
-            if cache_key in self.cache:
-                return self.cache[cache_key]
-            
-            # Get basic match data
-            match_data = self._fetch_match_data(match_id)
-            if not match_data:
-                print(f"❌ No match data found for ID: {match_id}")
-                return None
-            
-            # Structure the match info
-            match_info = {
-                "teams": {
-                    "home": {
-                        "name": match_data["teams"]["home"]["name"],
-                        "id": match_data["teams"]["home"]["id"],
-                        "logo": match_data["teams"]["home"]["logo"]
-                    },
-                    "away": {
-                        "name": match_data["teams"]["away"]["name"],
-                        "id": match_data["teams"]["away"]["id"],
-                        "logo": match_data["teams"]["away"]["logo"]
-                    }
-                },
-                "home_team": match_data["teams"]["home"]["name"],
-                "away_team": match_data["teams"]["away"]["name"],
-                "score": {
-                    "home": match_data["goals"]["home"],
-                    "away": match_data["goals"]["away"]
-                },
-                "fixture": {
-                    "date": match_data["fixture"]["date"],
-                    "venue": match_data["fixture"]["venue"]["name"],
-                    "status": match_data["fixture"]["status"]["long"]
-                },
-                "league": {
-                    "name": match_data["league"]["name"],
-                    "country": match_data["league"]["country"],
-                    "season": match_data["league"]["season"],
-                    "round": match_data["league"]["round"]
-                }
-            }
-            
-            # Get team IDs
-            team_ids = [
-                match_data["teams"]["home"]["id"],
-                match_data["teams"]["away"]["id"]
-            ]
-            
-            # Get detailed team statistics
-            team_statistics = {"home": {}, "away": {}}
-            for i, team_id in enumerate(team_ids):
-                team_type = "home" if i == 0 else "away"
-                team_stats = self._get_team_statistics(
-                    team_id, 
-                    match_data["league"]["id"],
-                    match_data["league"]["season"]
-                )
-                if team_stats:
-                    team_statistics[team_type] = team_stats
-                    
-                    # Add season performance metrics
-                    season_stats = self._get_season_statistics(team_id, match_data["league"]["id"])
-                    if season_stats:
-                        team_statistics[team_type]["season"] = season_stats
-            
-            # Get match events with enhanced details
-            events = self._get_match_events(match_id)
-            if events:
-                # Process events to add context
-                processed_events = []
-                for event in events:
-                    processed_event = {
-                        "time": event.get("time", {}),
-                        "team": event.get("team", {}),
-                        "player": event.get("player", {}),
-                        "type": event.get("type", ""),
-                        "detail": event.get("detail", ""),
-                        "comments": event.get("comments", ""),
-                        "assist": event.get("assist", {})
-                    }
-                    
-                    # Add context based on event type
-                    if processed_event["type"] == "Goal":
-                        # Add goal context (buildup, assist quality, etc.)
-                        processed_event["context"] = self._get_goal_context(event)
-                    elif processed_event["type"] == "Card":
-                        # Add card context (reason, impact, etc.)
-                        processed_event["context"] = self._get_card_context(event)
-                    
-                    processed_events.append(processed_event)
-                
-                coach_data = {
-                    "events": processed_events,
-                    "lineups": self._get_match_lineups(match_id),
-                    "formations": self._get_team_formations(team_ids),
-                    "tactics": self._analyze_team_tactics(processed_events)
-                }
-            else:
-                coach_data = {
-                    "events": [],
-                    "lineups": [],
-                    "formations": {"home": "Unknown", "away": "Unknown"},
-                    "tactics": {}
-                }
-            
-            # Get head-to-head history with context
-            h2h_data = self._get_head_to_head_history(team_ids[0], team_ids[1])
-            
-            # Get player performance data
-            player_data = self._get_player_performances(match_id)
-            
-            # Compile all data
-            compiled_data = {
-                "match_info": match_info,
-                "team_statistics": team_statistics,
-                "coach_data": coach_data,
-                "h2h_data": h2h_data,
-                "player_data": player_data
-            }
-            
-            # Cache the data
-            self.cache[cache_key] = compiled_data
-            
-            print(f"✅ Successfully compiled all match data")
-            return compiled_data
-            
-        except Exception as e:
-            print(f"❌ Error in get_match_data: {e}")
-            return None
-            
-    def _get_goal_context(self, event: Dict) -> Dict:
-        """Get detailed context for a goal event"""
-        return {
-            "buildup_play": self._analyze_buildup_play(event),
-            "assist_quality": self._analyze_assist_quality(event),
-            "goal_importance": self._analyze_goal_importance(event),
-            "similar_goals": self._find_similar_goals(event)
-        }
-    
-    def _get_card_context(self, event: Dict) -> Dict:
-        """Get detailed context for a card event"""
-        return {
-            "reason": self._analyze_card_reason(event),
-            "impact": self._analyze_card_impact(event),
-            "player_history": self._get_player_card_history(event)
-        }
-    
-    def _get_player_performances(self, match_id: str) -> Dict:
-        """Get detailed player performance data"""
-        try:
-            response = self._make_request(f"/fixtures/players?fixture={match_id}")
-            if not response or "response" not in response:
-                return {}
-                
-            performances = {}
-            for team_data in response["response"]:
-                for player in team_data.get("players", []):
-                    player_id = player.get("player", {}).get("id")
-                    if player_id:
-                        performances[player_id] = {
-                            "statistics": player.get("statistics", []),
-                            "rating": player.get("statistics", [{}])[0].get("games", {}).get("rating", 0),
-                            "minutes_played": player.get("statistics", [{}])[0].get("games", {}).get("minutes", 0),
-                            "position": player.get("statistics", [{}])[0].get("games", {}).get("position", ""),
-                            "is_substitute": player.get("statistics", [{}])[0].get("games", {}).get("substitute", False)
-                        }
-            
-            return performances
-            
-        except Exception as e:
-            print(f"❌ Error getting player performances: {e}")
-            return {}
-
-    def _get_team_statistics(self, team_id: int, league_id: int, season: Union[int, str]) -> Optional[Dict]:
-        """Get detailed team statistics"""
-        try:
-            # Convert season to integer
-            season_int = int(season) if season and season != "current" else datetime.now().year
-            
-            response = self._make_request(
-                'teams/statistics',
-                {
-                    "team": team_id,
-                    "league": league_id,
-                    "season": season_int
-                }
-            )
-            if not response or "response" not in response:
-                return None
-                
-            return response["response"]
-            
-        except Exception as e:
-            print(f"❌ Error getting team statistics: {e}")
-            return None
-
-    def _get_season_statistics(self, team_id: int, league_id: int) -> Optional[Dict]:
-        """Get season performance statistics"""
-        try:
-            # Get current season
-            current_season = datetime.now().year
-            
-            response = self._make_request(
-                'teams/statistics',
-                {
-                    "team": team_id,
-                    "league": league_id,
-                    "season": current_season
-                }
-            )
-            if not response or "response" not in response:
-                return None
-                
-            return response["response"]
-            
-        except Exception as e:
-            print(f"❌ Error getting season statistics: {e}")
-            return None
-
-    def _get_match_events(self, match_id: str) -> Optional[List]:
+    async def _get_match_events(self, match_id: str) -> Optional[List]:
         """Get match events with enhanced details"""
         try:
-            response = self._make_request(f"/fixtures/events?fixture={match_id}")
+            response = await self._make_request(f"fixtures/events?fixture={match_id}")
             if not response or "response" not in response:
                 return None
                 
-            return response["response"]
+            events = response["response"]
+            enhanced_events = []
+            
+            for event in events:
+                if event.get('type') == 'Goal':
+                    event['context'] = await self._get_goal_context(event)
+                elif event.get('type') in ['Yellow Card', 'Red Card']:
+                    event['context'] = await self._get_card_context(event)
+                enhanced_events.append(event)
+                
+            return enhanced_events
             
         except Exception as e:
             print(f"❌ Error getting match events: {e}")
-            return None
-
-    def _get_match_lineups(self, match_id: str) -> Optional[List]:
-        """Get match lineups"""
-        try:
-            response = self._make_request(f"/fixtures/lineups?fixture={match_id}")
-            if not response or "response" not in response:
-                return None
-                
-            return response["response"]
-            
-        except Exception as e:
-            print(f"❌ Error getting match lineups: {e}")
             return None
 
     def _get_team_formations(self, team_ids: List) -> Dict:
@@ -543,22 +767,23 @@ class MatchService:
             print(f"❌ Error analyzing team tactics: {e}")
             return None
 
-    def _get_head_to_head_history(self, team_id1: int, team_id2: int) -> Optional[Dict]:
-        """Get head-to-head history between two teams"""
-        try:
-            response = self._make_request(
-                'fixtures/headtohead',
-                {"h2h": f"{team_id1}-{team_id2}"}
-            )
-            if not response or "response" not in response:
-                return None
-                
-            return response["response"]
-            
-        except Exception as e:
-            print(f"❌ Error getting head-to-head history: {e}")
-            return None
-
+    def _get_goal_context(self, event: Dict) -> Dict:
+        """Get detailed context for a goal event"""
+        return {
+            "buildup_play": self._analyze_buildup_play(event),
+            "assist_quality": self._analyze_assist_quality(event),
+            "goal_importance": self._analyze_goal_importance(event),
+            "similar_goals": self._find_similar_goals(event)
+        }
+    
+    def _get_card_context(self, event: Dict) -> Dict:
+        """Get detailed context for a card event"""
+        return {
+            "reason": self._analyze_card_reason(event),
+            "impact": self._analyze_card_impact(event),
+            "player_history": self._get_player_card_history(event)
+        }
+    
     def _analyze_buildup_play(self, event: Dict) -> Dict:
         """Analyze buildup play for a goal event"""
         # Implementation of buildup play analysis logic
@@ -593,5 +818,79 @@ class MatchService:
         """Get player card history for a card event"""
         # Implementation of player card history retrieval logic
         return {}
+
+    async def _get_venue_details(self, match_id: str) -> Dict:
+        """Get venue details"""
+        try:
+            response = await self._make_request(f"fixtures?id={match_id}")
+            if response and response.get('response'):
+                fixture = response['response'][0].get('fixture', {})
+                venue = fixture.get('venue', {})
+                return {
+                    "name": venue.get('name'),
+                    "city": venue.get('city'),
+                    "capacity": venue.get('capacity'),
+                    "surface": venue.get('surface'),
+                    "attendance": fixture.get('attendance')
+                }
+        except Exception as e:
+            print(f"⚠️ Error getting venue details: {e}")
+        return {}
+
+    async def _get_weather_details(self, match_id: str) -> Dict:
+        """Get weather details"""
+        try:
+            response = await self._make_request(f"fixtures?id={match_id}")
+            if response and response.get('response'):
+                return response['response'][0].get('fixture', {}).get('weather', {})
+        except Exception as e:
+            print(f"⚠️ Error getting weather details: {e}")
+        return {}
+
+    async def _get_referee_details(self, match_id: str) -> Dict:
+        """Get referee details"""
+        try:
+            response = await self._make_request(f"fixtures?id={match_id}")
+            if response and response.get('response'):
+                return response['response'][0].get('fixture', {}).get('referee', {})
+        except Exception as e:
+            print(f"⚠️ Error getting referee details: {e}")
+        return {}
+
+    def _validate_match_data(self, match_data: Dict) -> bool:
+        """Validate that all required fields are present in match data"""
+        try:
+            # Check for required root level fields
+            required_fields = ['fixture', 'teams', 'goals', 'score']
+            for field in required_fields:
+                if field not in match_data:
+                    print(f"❌ Missing required field: {field}")
+                    return False
+                    
+            # Validate teams data
+            teams = match_data.get('teams', {})
+            for team_type in ['home', 'away']:
+                team = teams.get(team_type, {})
+                if not all(k in team for k in ['id', 'name']):
+                    print(f"❌ Missing required team fields for {team_type}")
+                    return False
+                    
+            # Validate goals data
+            goals = match_data.get('goals', {})
+            if not all(k in goals for k in ['home', 'away']):
+                print("❌ Missing required goals fields")
+                return False
+                
+            # Validate score data
+            score = match_data.get('score', {})
+            if not all(k in score for k in ['halftime', 'fulltime']):
+                print("❌ Missing required score fields")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error validating match data: {e}")
+            return False
 
         return None 

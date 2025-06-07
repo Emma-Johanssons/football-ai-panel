@@ -1,120 +1,371 @@
+"""
+Fan agent for panel discussions
+"""
 from typing import Dict, List
 from .base_agent import BaseAgent
 from create_avatar import AvatarCreator
 from .avatar_mapping import get_avatar_config
+from services.match_service import MatchService
+import random
 
 class FanAgent(BaseAgent):
-    def __init__(self, team: str, is_home: bool = True, match_id: str = "1374812"):
-        """
-        Initialize a fan agent for either home or away team
+    def __init__(self, team: str, is_home: bool, match_id: str = None):
+        name = f"{'Home' if is_home else 'Away'} Fan"
+        role = f"{'Home' if is_home else 'Away'} Fan"
+        system_prompt = f"""You are a passionate {team} fan.
+        Your role is to:
+        1. Share fan perspective and emotions
+        2. Discuss team history and traditions
+        3. Comment on player performances
+        4. Express hopes and concerns
+        5. Maintain fan loyalty while being respectful
+        6. Add color and passion to the discussion"""
+        personality = "passionate and knowledgeable fan"
         
-        Args:
-            team: Name of the team this fan supports
-            is_home: Whether this is the home team's fan (True) or away team's fan (False)
-            match_id: ID of the match being discussed
-        """
+        super().__init__(name=name, role=role, system_prompt=system_prompt, personality=personality, match_id=match_id)
+        
         self.team = team
         self.is_home = is_home
-        fan_type = "Home Fan" if is_home else "Away Fan"
         
-        system_prompt = f"""You are a passionate {team} {'home' if is_home else 'away'} fan, very emotional about your team. Your role is to:
-        1. React strongly to any criticism of your team
-        2. Get excited about good plays
-        3. Argue with stats that don't favor your team
-        4. Show your emotions freely
-        5. Defend your team passionately
+        # Initialize fan-specific attributes
+        self.emotional_state = "neutral"  # Can be: excited, nervous, disappointed, elated
+        self.confidence_level = 0.5  # 0.0 to 1.0
         
-        Your personality traits:
-        - Very emotional about your team
-        - Quick to react to criticism
-        - Doesn't always trust statistics
-        - Passionate about players
-        - Can get angry easily
+        # Track discussed topics
+        self.discussed_topics = set()
         
-        Remember to:
-        - Show strong emotions
-        - React quickly to others' comments
-        - Defend your team
-        - Challenge negative stats
-        - Express joy or frustration freely"""
-        
-        super().__init__(
-            name=f"{team} Fan",
-            role=fan_type,
-            system_prompt=system_prompt,
-            personality="passionate and emotional fan",
-            match_id=match_id
-        )
-        
-        # Set avatar configuration based on home/away
-        if is_home:
-            self.avatar_config = {
-                "image_url": "https://i.imgur.com/DDIfv5v.png",
-                "voice_id": "en-US-GuyNeural",
-                "voice_settings": {
-                    "rate": 1.3,  # Fast and excited
-                    "style": "excited",  # Emotional style
-                    "pitch": 1.2  # Higher pitch for excitement
-                }
-            }
-        else:
-            self.avatar_config = {
-                "image_url": "https://i.imgur.com/readyplayer.jpg",  # Different avatar for away fan
-                "voice_id": "en-US-AriaNeural",
-                "voice_settings": {
-                    "rate": 1.3,  # Fast and excited
-                    "style": "excited",  # Emotional style
-                    "pitch": 1.1  # Slightly higher pitch
-                }
-            }
-        
-        # Initialize avatar creator
-        self.avatar_creator = AvatarCreator()
-    
-    def get_response(self, state: Dict) -> str:
-        """Generate a contextual response based on conversation state and emotional state"""
-        # Get recent conversation flow
-        flow = state.get("flow", [])
-        if not flow:
-            return self.analyze(state.get("match_data", {}))
-            
-        # Get the last few exchanges
-        recent_exchanges = flow[-3:] if len(flow) >= 3 else flow
-        
-        # Create context for the response
-        context = {
-            "recent_speakers": [exchange["speaker"] for exchange in recent_exchanges],
-            "recent_topics": self._extract_topics(recent_exchanges),
-            "emotional_states": state.get("emotional_states", {}),
-            "interruptions": state.get("interruptions", 0),
-            "match_data": state.get("match_data", {})
+        # Initialize response templates
+        self.response_templates = {
+            "positive": [
+                "Absolutely brilliant from {player}!",
+                "That's exactly what we expect from {team}!",
+                "You can see why we fans love {player} so much!",
+                "Classic {team} performance right there!",
+                "This is why {team} is special!"
+            ],
+            "negative": [
+                "We need to do better than that...",
+                "Not what you expect from {team}...",
+                "{player} needs to step up here.",
+                "This isn't the {team} we know.",
+                "We've got to improve this."
+            ],
+            "neutral": [
+                "Interesting point about {team}.",
+                "Let's see how {player} develops.",
+                "There's more to come from {team}.",
+                "We've seen both sides of {team} today.",
+                "It's a work in progress."
+            ]
         }
         
-        # Get current emotional state
-        current_emotion = self._get_emotional_state(context)
-        
-        # Create messages for chat completion
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": f"""As a passionate {self.team} fan, respond to the recent discussion:
-            Last speakers: {', '.join(context['recent_speakers'])}
-            Recent topics: {', '.join(context['recent_topics'])}
-            Current emotional state: {current_emotion}
+    async def _generate_response(self, current_state: Dict, recent_context: List[Dict], match_data: Dict, knowledge: Dict) -> str:
+        """Generate a fan response based on the current state"""
+        try:
+            # Update emotional state based on match situation
+            self._update_emotional_state(match_data)
             
-            Generate a response that:
-            1. Shows your passion for {self.team}
-            2. Reacts to what was just said
-            3. References match facts and statistics
-            4. Expresses your current emotional state
-            5. Maintains your unique personality
-            6. Uses historical context when relevant
-            7. Avoids repetitive phrases
-            8. Feels natural and unscripted"""}
-        ]
+            # Get last speaker and content
+            last_exchange = recent_context[-1] if recent_context else None
+            last_speaker = last_exchange["speaker"] if last_exchange else None
+            last_content = last_exchange["content"].lower() if last_exchange else ""
+            
+            # Check if this is a conclusion question
+            if self._is_conclusion_question(last_content):
+                return self._give_fan_verdict(match_data)
+                
+            # If responding to stats expert
+            if last_speaker == "Stats Expert":
+                return self._respond_to_stats(last_content, match_data)
+                
+            # If responding to tactical analyst
+            if last_speaker == "Tactical Analyst":
+                return self._respond_to_tactics(last_content, match_data)
+                
+            # If responding to other fan
+            if "Fan" in last_speaker:
+                return self._respond_to_fan(last_content, match_data)
+                
+            # Default to sharing fan perspective
+            return self._share_fan_perspective(match_data)
+            
+        except Exception as e:
+            print(f"Error in FanAgent _generate_response: {e}")
+            return f"As a {self.team} fan, I'm just hoping for the best here."
+            
+    def _update_emotional_state(self, match_data: Dict):
+        """Update emotional state based on match situation"""
+        match_info = match_data.get("match_info", {})
+        score = match_info.get("score", {}).get("fulltime", {"home": 0, "away": 0})
         
-        # Get response from OpenAI
-        response = self._get_completion(messages)
-        return response
+        my_score = score["home"] if self.is_home else score["away"]
+        opponent_score = score["away"] if self.is_home else score["home"]
+        
+        if my_score > opponent_score:
+            self.emotional_state = "elated"
+            self.confidence_level = 0.8
+        elif my_score < opponent_score:
+            self.emotional_state = "disappointed"
+            self.confidence_level = 0.3
+        else:
+            self.emotional_state = "neutral"
+            self.confidence_level = 0.5
+            
+    def _respond_to_stats(self, stats_point: str, match_data: Dict) -> str:
+        """Respond to statistical points from a fan perspective"""
+        response = ""
+        
+        if "possession" in stats_point:
+            response = self._comment_on_possession(match_data)
+        elif "shots" in stats_point:
+            response = self._comment_on_shooting(match_data)
+        elif any(player in stats_point for player in self._get_team_players(match_data)):
+            response = self._comment_on_player_stats(stats_point, match_data)
+        else:
+            response = self._get_general_stats_response(match_data)
+            
+        return self._add_fan_emotion(response)
+        
+    def _respond_to_tactics(self, tactical_point: str, match_data: Dict) -> str:
+        """Respond to tactical points from a fan perspective"""
+        response = ""
+        
+        if "formation" in tactical_point:
+            response = self._comment_on_formation(match_data)
+        elif "pressing" in tactical_point:
+            response = self._comment_on_pressing(match_data)
+        elif "attack" in tactical_point:
+            response = self._comment_on_attack(match_data)
+        else:
+            response = self._get_general_tactical_response(match_data)
+            
+        return self._add_fan_emotion(response)
+        
+    def _respond_to_fan(self, fan_point: str, match_data: Dict) -> str:
+        """Respond to other fan's point"""
+        # If it's a rival fan
+        if ("Home Fan" in self.name and "Away Fan" in fan_point) or \
+           ("Away Fan" in self.name and "Home Fan" in fan_point):
+            return self._give_rival_perspective(fan_point, match_data)
+        else:
+            return self._agree_with_fan(fan_point, match_data)
+            
+    def _share_fan_perspective(self, match_data: Dict) -> str:
+        """Share a new fan perspective on the match"""
+        # Choose an undiscussed aspect
+        available_topics = self._get_available_topics()
+        
+        if not available_topics:
+            self.discussed_topics.clear()
+            available_topics = ["team_performance", "player_highlight", "atmosphere", "expectations"]
+            
+        topic = random.choice(available_topics)
+        self.discussed_topics.add(topic)
+        
+        return self._generate_topic_response(topic, match_data)
+        
+    def _get_available_topics(self) -> List[str]:
+        """Get list of available topics to discuss"""
+        all_topics = ["team_performance", "player_highlight", "atmosphere", "expectations"]
+        return [topic for topic in all_topics if topic not in self.discussed_topics]
+        
+    def _generate_topic_response(self, topic: str, match_data: Dict) -> str:
+        """Generate response for a specific topic"""
+        if topic == "team_performance":
+            return self._comment_on_team_performance(match_data)
+        elif topic == "player_highlight":
+            return self._highlight_player_performance(match_data)
+        elif topic == "atmosphere":
+            return self._comment_on_atmosphere(match_data)
+        else:  # expectations
+            return self._share_expectations(match_data)
+            
+    def _comment_on_team_performance(self, match_data: Dict) -> str:
+        """Comment on overall team performance"""
+        match_info = match_data.get("match_info", {})
+        score = match_info.get("score", {}).get("fulltime", {"home": 0, "away": 0})
+        
+        my_score = score["home"] if self.is_home else score["away"]
+        opponent_score = score["away"] if self.is_home else score["home"]
+        
+        if my_score > opponent_score:
+            return f"This is exactly what we expect from {self.team}! The lads showed real character today."
+        elif my_score < opponent_score:
+            return f"Not the result we wanted, but {self.team} showed some promising moments."
+        else:
+            return f"A draw feels fair, but {self.team} had chances to win it."
+            
+    def _highlight_player_performance(self, match_data: Dict) -> str:
+        """Highlight a specific player's performance"""
+        players = self._get_team_players(match_data)
+        if not players:
+            return f"The whole {self.team} squad gave it their all today."
+            
+        player = random.choice(players)
+        return random.choice(self.response_templates[self.emotional_state]).format(
+            player=player,
+            team=self.team
+        )
+        
+    def _comment_on_atmosphere(self, match_data: Dict) -> str:
+        """Comment on match atmosphere"""
+        if self.is_home:
+            return f"The atmosphere at our ground was electric today! The {self.team} faithful really got behind the team."
+        else:
+            return f"Our away support was fantastic as always. You could hear the {self.team} fans throughout the match!"
+            
+    def _share_expectations(self, match_data: Dict) -> str:
+        """Share expectations for the team"""
+        if self.emotional_state == "elated":
+            return f"This is the kind of performance that shows what {self.team} is capable of!"
+        elif self.emotional_state == "disappointed":
+            return f"We know {self.team} can do better than this. We've seen it before."
+        else:
+            return f"There's definitely more to come from this {self.team} side."
+            
+    def _comment_on_possession(self, match_data: Dict) -> str:
+        """Comment on possession statistics"""
+        stats = match_data.get("match_statistics", {})
+        my_stats = stats["home"] if self.is_home else stats["away"]
+        
+        possession = float(my_stats.get("Ball Possession", "0").rstrip("%"))
+        
+        if possession > 55:
+            return f"That's what we like to see - {self.team} controlling the game!"
+        elif possession < 45:
+            return f"Sometimes you don't need the ball to be effective. {self.team} knows how to play smart!"
+        else:
+            return "It's not about possession, it's about what you do with it!"
+            
+    def _comment_on_shooting(self, match_data: Dict) -> str:
+        """Comment on shooting statistics"""
+        stats = match_data.get("match_statistics", {})
+        my_stats = stats["home"] if self.is_home else stats["away"]
+        
+        shots = int(my_stats.get("Total Shots", 0))
+        
+        if shots > 15:
+            return f"That's the {self.team} way - keep testing the keeper!"
+        elif shots < 10:
+            return "We need to be more adventurous in front of goal."
+        else:
+            return "Creating chances is good, but it's about taking them when they come!"
+            
+    def _comment_on_formation(self, match_data: Dict) -> str:
+        """Comment on team formation"""
+        return f"The setup looks good - it really plays to {self.team}'s strengths!"
+        
+    def _comment_on_pressing(self, match_data: Dict) -> str:
+        """Comment on team pressing"""
+        stats = match_data.get("match_statistics", {})
+        my_stats = stats["home"] if self.is_home else stats["away"]
+        
+        duels_won = int(my_stats.get("Duels won", 0))
+        
+        if duels_won > 55:
+            return f"Love seeing {self.team} getting stuck in! That's what the fans want to see!"
+        else:
+            return "We need to show more intensity in the challenges!"
+            
+    def _comment_on_attack(self, match_data: Dict) -> str:
+        """Comment on attacking play"""
+        match_info = match_data.get("match_info", {})
+        score = match_info.get("score", {}).get("fulltime", {"home": 0, "away": 0})
+        
+        my_score = score["home"] if self.is_home else score["away"]
+        
+        if my_score > 1:
+            return f"This is the attacking football we love to see from {self.team}!"
+        else:
+            return "We've got the quality up front, just need to show it more consistently."
+            
+    def _get_general_stats_response(self, match_data: Dict) -> str:
+        """Generate general response to statistics"""
+        return f"Numbers are one thing, but what matters is how {self.team} performs on the pitch!"
+        
+    def _get_general_tactical_response(self, match_data: Dict) -> str:
+        """Generate general response to tactical points"""
+        return f"The tactics look good when {self.team} executes them properly!"
+        
+    def _give_rival_perspective(self, rival_point: str, match_data: Dict) -> str:
+        """Respond to rival fan's point"""
+        if self.emotional_state == "elated":
+            return f"That's one way to look at it, but {self.team}'s performance speaks for itself!"
+        elif self.emotional_state == "disappointed":
+            return f"Fair point, but {self.team} has shown before that we can bounce back!"
+        else:
+            return "Let's focus on the football - both teams have their moments!"
+            
+    def _agree_with_fan(self, fan_point: str, match_data: Dict) -> str:
+        """Agree with fellow fan's point"""
+        return "Couldn't agree more! That's exactly what us fans have been saying!"
+        
+    def _add_fan_emotion(self, response: str) -> str:
+        """Add emotional context to response"""
+        if self.emotional_state == "elated":
+            return response + " This is what being a fan is all about!"
+        elif self.emotional_state == "disappointed":
+            return response + " But we'll always support the team!"
+        else:
+            return response + " That's how we see it from the stands!"
+            
+    def _get_team_players(self, match_data: Dict) -> List[str]:
+        """Get list of team players"""
+        match_info = match_data.get("match_info", {})
+        teams = match_info.get("teams", {})
+        my_team = teams["home"] if self.is_home else teams["away"]
+        
+        players = []
+        if "lineup" in my_team:
+            players.extend([p.get("name", "") for p in my_team["lineup"]])
+        if "substitutes" in my_team:
+            players.extend([p.get("name", "") for p in my_team["substitutes"]])
+            
+        return [p for p in players if p]
+        
+    def _give_fan_verdict(self, match_data: Dict) -> str:
+        """Give a fan's verdict on the match"""
+        match_info = match_data.get("match_info", {})
+        score = match_info.get("score", {}).get("fulltime", {"home": 0, "away": 0})
+        
+        my_score = score["home"] if self.is_home else score["away"]
+        opponent_score = score["away"] if self.is_home else score["home"]
+        
+        verdict = f"From a {self.team} fan's perspective, "
+        
+        if my_score > opponent_score:
+            verdict += "this was exactly the kind of performance we love to see! "
+            verdict += "The team showed real character and deserved the win."
+        elif my_score < opponent_score:
+            verdict += "it's a disappointing result, but we've got to keep supporting the team. "
+            verdict += "We know they can do better, and they'll show it next time."
+        else:
+            verdict += "there were positives and negatives to take from this. "
+            verdict += "A draw feels fair, but we always want to see our team win."
+            
+        return verdict
+    
+    async def _analyze_match_outcome(self, match_data: Dict, current_state: Dict) -> Dict:
+        """Analyze match outcome from fan perspective"""
+        team_stats = match_data.get("statistics", {})
+        match_info = match_data.get("match_info", {})
+        
+        # Get team performance metrics
+        team_performance = await self._analyze_team_performance(team_stats)
+        key_moments = await self._analyze_key_moments(match_data)
+        
+        # Get actual result
+        score = match_info.get("score", {"home": 0, "away": 0})
+        team_won = (self.is_home and score["home"] > score["away"]) or \
+                  (not self.is_home and score["away"] > score["home"])
+        
+        return {
+            "team_performance": team_performance,
+            "key_moments": key_moments,
+            "team_won": team_won,
+            "emotional_response": await self._get_emotional_response(team_won, team_performance),
+            "fan_perspective": await self._generate_fan_perspective(match_data)
+        }
     
     def _get_emotional_state(self, context: Dict) -> str:
         """Determine emotional state based on context"""

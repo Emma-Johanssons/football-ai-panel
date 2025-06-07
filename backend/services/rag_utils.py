@@ -4,8 +4,8 @@ import openai
 import feedparser
 from typing import Tuple, Dict, List
 
-def get_api_football_stats(match_id: str) -> Dict:
-    """Get comprehensive football statistics from API-Football"""
+async def get_api_football_stats(match_id: str) -> Dict:
+    """Get match statistics from API Football"""
     api_key = os.getenv("FOOTBALL_API_KEY")
     if not api_key:
         return {"error": "No API key set for API-Football."}
@@ -92,71 +92,50 @@ def get_api_football_stats(match_id: str) -> Dict:
         }
         
     except Exception as e:
-        return {"error": f"Error fetching stats: {str(e)}"}
+        print(f"Error fetching match stats: {str(e)}")
+        return {}
 
-def get_football_rules() -> List[str]:
-    """Get relevant football rules and regulations"""
-    rules = [
-        "Offside Rule: A player is in an offside position if they are nearer to the opponent's goal line than both the ball and the second-last opponent.",
-        "Yellow Card: Given for unsporting behavior, dissent, persistent infringement, or delaying the restart of play.",
-        "Red Card: Given for serious foul play, violent conduct, spitting, denying an obvious goal-scoring opportunity, or receiving a second yellow card.",
-        "Penalty Kick: Awarded when a foul occurs inside the penalty area.",
-        "Free Kick: Awarded for fouls and misconduct outside the penalty area.",
-        "Throw-in: Awarded when the ball goes out of play over the touchline.",
-        "Goal Kick: Awarded when the ball goes out of play over the goal line, last touched by an attacking player.",
-        "Corner Kick: Awarded when the ball goes out of play over the goal line, last touched by a defending player.",
-        "Handball: A foul when a player deliberately handles the ball.",
-        "Dangerous Play: Any action that could potentially cause injury to another player."
-    ]
-    return rules
-
-def get_tactical_knowledge() -> List[str]:
-    """Get tactical football knowledge"""
-    tactics = [
-        "Formations: Common formations include 4-4-2, 4-3-3, 3-5-2, and 4-2-3-1.",
-        "Pressing: A defensive tactic where players actively try to win the ball back high up the pitch.",
-        "Counter-attack: A quick transition from defense to attack after winning the ball.",
-        "Possession-based play: A style focused on maintaining control of the ball.",
-        "High defensive line: Defenders position themselves high up the pitch to compress space.",
-        "Man-to-man marking: Each defender is assigned to mark a specific opponent.",
-        "Zonal marking: Defenders cover specific areas of the pitch rather than specific players.",
-        "False nine: A forward who drops deep to create space for other attackers.",
-        "Wing play: Attacking strategy focused on using the wide areas of the pitch.",
-        "Tiki-taka: A style characterized by short passing and movement, working the ball through various channels."
-    ]
-    return tactics
-
-def get_historical_context(team1: str, team2: str) -> List[str]:
-    """Get historical context about matches between two teams"""
+async def get_football_rules() -> List[str]:
+    """Get relevant football rules"""
     try:
-        # Search for news about the teams
-        query = f"{team1} vs {team2} football rivalry history"
-        url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}"
-        feed = feedparser.parse(url)
-        
-        # Get the most relevant articles
-        articles = []
-        for entry in feed.entries[:5]:
-            articles.append(f"{entry.title}: {entry.summary}")
-            
-        return articles
+        # Implement fetching rules from database or API
+        return []
     except Exception as e:
-        return [f"Error fetching historical context: {str(e)}"]
+        print(f"Error fetching rules: {str(e)}")
+        return []
 
-def rag_retrieve(match_id: str, query: str, role: str = None) -> Tuple[Dict, List[str], List[str]]:
+async def get_tactical_knowledge() -> List[str]:
+    """Get tactical knowledge"""
+    try:
+        # Implement fetching tactical knowledge from database or API
+        return []
+    except Exception as e:
+        print(f"Error fetching tactical knowledge: {str(e)}")
+        return []
+
+async def get_historical_context(home_team: str, away_team: str) -> List[str]:
+    """Get historical context for teams"""
+    try:
+        # Implement fetching historical data from database or API
+        return []
+    except Exception as e:
+        print(f"Error fetching historical context: {str(e)}")
+        return []
+
+async def rag_retrieve(match_id: str, query: str, role: str = None) -> Tuple[Dict, List[str], List[str], List[str]]:
     """Retrieve relevant information based on the query and role"""
     # Get match statistics
-    stats = get_api_football_stats(match_id)
+    stats = await get_api_football_stats(match_id)
     
     # Get role-specific knowledge
-    rules = get_football_rules() if role == "Stats Analyst" else []
-    tactics = get_tactical_knowledge() if role == "Football Coach" else []
+    rules = await get_football_rules() if role == "Stats Analyst" else []
+    tactics = await get_tactical_knowledge() if role == "Football Coach" else []
     
     # Get historical context if we have team names
     historical = []
     if stats.get("match_info"):
         home_team = stats["match_info"]["home_team"]
         away_team = stats["match_info"]["away_team"]
-        historical = get_historical_context(home_team, away_team)
+        historical = await get_historical_context(home_team, away_team)
     
     return stats, rules, tactics, historical 

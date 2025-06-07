@@ -1,12 +1,10 @@
 import os
 from typing import Dict, List, Optional
 from datetime import datetime
-from .football_stats_service import FootballStatsService
 from .match_service import MatchService
 
 class MatchAnalysisService:
     def __init__(self):
-        self.stats_service = FootballStatsService()
         self.match_service = MatchService()
     
     def get_comprehensive_match_data(self, match_id: str) -> Dict:
@@ -53,7 +51,7 @@ class MatchAnalysisService:
                     "teams": teams
                 },
                 "statistics": {
-                    "team_stats": match_data.get("team_statistics", {}),
+                    "team_stats": match_data.get("match_statistics", {}),
                     "player_stats": player_stats
                 },
                 "events": events,

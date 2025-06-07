@@ -1,18 +1,18 @@
 """
-Agent modules for football panel discussion
+Agent module for football panel discussions
 """
 from .base_agent import BaseAgent
 from .host_agent import HostAgent
-from .stats_agent import StatsAgent
 from .coach_agent import CoachAgent
+from .stats_agent import StatsAgent
 from .fan_agent import FanAgent
-from .avatar_mapping import get_avatar_config
+from .learning_agent import LearningAgent
 
 __all__ = [
     'BaseAgent',
     'HostAgent',
-    'StatsAgent',
     'CoachAgent',
+    'StatsAgent',
     'FanAgent',
-    'get_avatar_config'
+    'LearningAgent'
 ] 

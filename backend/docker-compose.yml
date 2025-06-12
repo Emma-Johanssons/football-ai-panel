@@ -1,27 +1,13 @@
 version: "3.8"
 
 services:
-  football-panel:
+  football-ai-panel:
     build: .
     volumes:
-      - .:/app # Mount entire backend directory for development
-      - football_data:/app/data # Persistent volume for ChromaDB
-    env_file:
-      - .env # Load environment variables from .env
+      - ./approach_2:/app/approach_2 # Mount approach_2 directory for persistent data
+      - ./.env:/app/.env # Mount .env file for environment variables
     environment:
-      - PYTHONUNBUFFERED=1
-      - VISIONSTORY_API_KEY
-    ports:
-      - "8000:8000" # For potential future web interface
-    # Run the panel discussion
-    command: python test_panel.py
-    # Add healthcheck to verify environment
-    healthcheck:
-      test: ["CMD", "sh", "-c", 'test -n "$VISIONSTORY_API_KEY"']
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-volumes:
-  football_data:
-    # This volume will persist the ChromaDB data between container restarts
+      - PYTHONPATH=/app
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - FFPROBE_PATH=/usr/bin/ffprobe
+    command: tail -f /dev/null # Keep container running without blocking

@@ -9,36 +9,108 @@ import time
 from pydub import AudioSegment
 import asyncio
 import platform
+import subprocess
+import shutil
+import json
 
-# Configure FFmpeg path
-def get_ffmpeg_path():
-    """Get the FFmpeg executable path based on the operating system"""
+# Explicitly set FFmpeg paths at module level
+load_dotenv()
+ffmpeg_path = os.getenv("FFMPEG_PATH")
+ffprobe_path = os.getenv("FFPROBE_PATH")
+
+if ffmpeg_path and os.path.exists(ffmpeg_path):
+    AudioSegment.converter = ffmpeg_path
+    AudioSegment.ffmpeg = ffmpeg_path
+    if ffprobe_path and os.path.exists(ffprobe_path):
+        AudioSegment.ffprobe = ffprobe_path
+    else:
+        # Try to find ffprobe in the same directory as ffmpeg
+        ffprobe_dir = os.path.dirname(ffmpeg_path)
+        ffprobe_path = os.path.join(ffprobe_dir, 'ffprobe.exe')
+        if os.path.exists(ffprobe_path):
+            AudioSegment.ffprobe = ffprobe_path
+
+def configure_ffmpeg():
+    """Configure FFmpeg paths for pydub"""
+    # Load environment variables
+    load_dotenv()
+    
+    # Try to get FFmpeg paths from environment variables
+    ffmpeg_path = os.getenv('FFMPEG_PATH')
+    ffprobe_path = os.getenv('FFPROBE_PATH')
+    
+    if ffmpeg_path and os.path.exists(ffmpeg_path):
+        # Configure pydub with FFmpeg paths
+        AudioSegment.converter = ffmpeg_path
+        AudioSegment.ffmpeg = ffmpeg_path
+        
+        # Use ffprobe path if provided, otherwise try to find it
+        if ffprobe_path and os.path.exists(ffprobe_path):
+            AudioSegment.ffprobe = ffprobe_path
+            print(f"✅ FFmpeg configured from .env:")
+            print(f"   - FFmpeg: {ffmpeg_path}")
+            print(f"   - FFprobe: {ffprobe_path}")
+            return True
+        else:
+            # Try to find ffprobe in the same directory as ffmpeg
+            ffprobe_dir = os.path.dirname(ffmpeg_path)
+            ffprobe_path = os.path.join(ffprobe_dir, 'ffprobe.exe')
+            if os.path.exists(ffprobe_path):
+                AudioSegment.ffprobe = ffprobe_path
+                print(f"✅ FFmpeg configured from .env:")
+                print(f"   - FFmpeg: {ffmpeg_path}")
+                print(f"   - FFprobe: {ffprobe_path}")
+                return True
+            else:
+                print("❌ ffprobe not found. Please ensure ffprobe.exe is in the same directory as ffmpeg.exe")
+                return False
+    
     system = platform.system().lower()
+    
     if system == 'windows':
-        # Check common Windows installation paths
+        # Common Windows FFmpeg paths
         common_paths = [
             'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\Program Files (x86)\\ffmpeg\\bin\\ffmpeg.exe',
             os.path.join(os.environ.get('USERPROFILE', ''), 'ffmpeg\\bin\\ffmpeg.exe'),
             'ffmpeg.exe'  # If in PATH
         ]
+        
+        # Try to find FFmpeg
         for path in common_paths:
             if os.path.exists(path):
-                return path
-        return 'ffmpeg'  # Default to hoping it's in PATH
-    elif system == 'darwin':  # macOS
-        return 'ffmpeg'  # Usually installed via homebrew
-    else:  # Linux and others
-        return 'ffmpeg'  # Usually available in system PATH
+                # Configure pydub with FFmpeg paths
+                AudioSegment.converter = path
+                AudioSegment.ffmpeg = path
+                
+                # Try to find ffprobe in the same directory
+                ffprobe_dir = os.path.dirname(path)
+                ffprobe_path = os.path.join(ffprobe_dir, 'ffprobe.exe')
+                if os.path.exists(ffprobe_path):
+                    AudioSegment.ffprobe = ffprobe_path
+                    print(f"✅ FFmpeg configured from system:")
+                    print(f"   - FFmpeg: {path}")
+                    print(f"   - FFprobe: {ffprobe_path}")
+                    return True
+                else:
+                    print(f"❌ ffprobe not found in {ffprobe_dir}")
+                    continue
+                
+        print("❌ FFmpeg not found. Please install FFmpeg and ensure it's in your PATH")
+        return False
+    else:
+        AudioSegment.converter = 'ffmpeg'
+        AudioSegment.ffmpeg = 'ffmpeg'
+        AudioSegment.ffprobe = 'ffprobe'
+        return True
 
-# Set FFmpeg paths for pydub
-FFMPEG_PATH = get_ffmpeg_path()
-AudioSegment.converter = FFMPEG_PATH
-AudioSegment.ffmpeg = FFMPEG_PATH
-AudioSegment.ffprobe = FFMPEG_PATH.replace('ffmpeg', 'ffprobe')
+# Configure FFmpeg at module level
+if not configure_ffmpeg():
+    print("⚠️ Warning: FFmpeg configuration failed. Audio processing may not work correctly.")
 
 class TTSService:
-    def __init__(self):
+    def __init__(self, audio_dir: str = None):
+        """Initialize the TTS service"""
         # Get the absolute path to the backend directory
         backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env_path = os.path.join(backend_dir, '.env')
@@ -52,280 +124,65 @@ class TTSService:
             
         set_api_key(self.api_key)
         
-        # Define voice configurations for each character with personality-based settings
-        self.voice_configs = {
-            "Show Host": {
-                "voice_id": "EXAVITQu4vr4xnSDxMaL",  # Sarah - Professional female voice
-                "settings": VoiceSettings(
-                    stability=0.75,  # More stable for broadcast clarity
-                    similarity_boost=0.85,  # Stronger voice consistency
-                    style=0.7,  # Engaging but professional
-                    use_speaker_boost=True
-                ),
-                "excited_settings": VoiceSettings(  # For key moments
-                    stability=0.6,  # More dynamic for exciting moments
-                    similarity_boost=0.8,
-                    style=0.85,  # More animated
-                    use_speaker_boost=True
-                )
-            },
-            "Tactical Analyst": {
-                "voice_id": "JBFqnCBsd6RMkjVDRZzb",  # George - Male voice for analyst
-                "settings": VoiceSettings(
-                    stability=0.8,  # Very stable for clear analysis
-                    similarity_boost=0.8,
-                    style=0.65,  # Professional but engaging
-                    use_speaker_boost=True
-                ),
-                "detailed_settings": VoiceSettings(  # For deep tactical analysis
-                    stability=0.85,
-                    similarity_boost=0.75,
-                    style=0.6,  # More focused
-                    use_speaker_boost=True
-                )
-            },
-            "Stats Expert": {
-                "voice_id": "N2lVS1w4EtoT3dr4eOWO",  # Callum - Male voice for stats
-                "settings": VoiceSettings(
-                    stability=0.85,  # Very stable for precise stats
-                    similarity_boost=0.8,
-                    style=0.6,  # Clear and authoritative
-                    use_speaker_boost=True
-                ),
-                "excited_settings": VoiceSettings(  # For impressive stats
-                    stability=0.7,
-                    similarity_boost=0.75,
-                    style=0.75,  # More animated for key stats
-                    use_speaker_boost=True
-                )
-            },
-            "Home Fan": {
-                "voice_id": "9BWtsMINqrJLrRacOk9x",  # Aria - Female voice for home fan
-                "settings": VoiceSettings(
-                    stability=0.3,  # Less stable for more natural flow
-                    similarity_boost=0.7,
-                    style=0.9,  # Very expressive
-                    use_speaker_boost=True
-                ),
-                "angry_settings": VoiceSettings(  # Angry, passionate tone
-                    stability=0.2,  # Even less stable for emotional outbursts
-                    similarity_boost=0.7,
-                    style=1.0,  # Maximum expressiveness
-                    use_speaker_boost=True
-                )
-            },
-            "Away Fan": {
-                "voice_id": "TX3LPaxmHKxFdv7VOQHJ",  # Liam - Male voice for away fan
-                "settings": VoiceSettings(
-                    stability=0.3,  # Less stable for more natural flow
-                    similarity_boost=0.7,
-                    style=0.9,  # Very expressive
-                    use_speaker_boost=True
-                ),
-                "angry_settings": VoiceSettings(  # Angry, passionate tone
-                    stability=0.2,  # Even less stable for emotional outbursts
-                    similarity_boost=0.7,
-                    style=1.0,  # Maximum expressiveness
-                    use_speaker_boost=True
-                )
-            },
-            "Inter Fan": {
-                "voice_id": "XB0fDUnXU5powFXDhCwa",  # Charlotte - Female voice for Inter fan
-                "settings": VoiceSettings(
-                    stability=0.3,  # Less stable for more natural flow
-                    similarity_boost=0.7,
-                    style=0.9,
-                    use_speaker_boost=True
-                ),
-                "angry_settings": VoiceSettings(  # Angry, passionate tone
-                    stability=0.2,  # Even less stable for emotional outbursts
-                    similarity_boost=0.7,
-                    style=1.0,
-                    use_speaker_boost=True
-                )
-            },
-            "Paris Saint Germain Fan": {  # Changed from "PSG Fan" to full name
-                "voice_id": "pNInz6obpgDQGcFmaJgB",  # Adam - Male voice for PSG fan
-                "settings": VoiceSettings(
-                    stability=0.2,  # Very dynamic for emotional expression
-                    similarity_boost=0.7,
-                    style=1.0,  # Maximum expressiveness
-                    use_speaker_boost=True
-                ),
-                "angry_settings": VoiceSettings(  # Angry, passionate tone
-                    stability=0.1,  # Extremely dynamic for emotional outbursts
-                    similarity_boost=0.7,
-                    style=1.0,
-                    use_speaker_boost=True
-                )
-            }
-        }
+        # Configure FFmpeg paths
+        if not configure_ffmpeg():
+            raise ValueError("FFmpeg configuration failed. Please ensure FFmpeg and ffprobe are properly installed.")
         
-    async def generate_mixed_discussion(self, discussion_points: List[Dict]) -> Optional[str]:
-        """Generate a single mixed audio recording of the entire discussion"""
+        # Set audio directory
+        self.audio_dir = audio_dir if audio_dir else os.path.join(backend_dir, "audio")
+        os.makedirs(self.audio_dir, exist_ok=True)
+        
+        # Create temp directory for segments
+        self.temp_dir = os.path.join(self.audio_dir, "temp")
+        os.makedirs(self.temp_dir, exist_ok=True)
+        
+    def _normalize_audio(self, audio_segment: AudioSegment) -> AudioSegment:
+        """Normalize audio levels with special handling for the first part"""
         try:
-            # Create output directory if it doesn't exist
-            output_dir = os.path.join(os.getcwd(), "audio")
-            os.makedirs(output_dir, exist_ok=True)
-            
-            # Create temp directory for segments
-            temp_dir = os.path.join(output_dir, "temp")
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            # Generate individual audio segments
-            audio_segments = []
-            previous_speaker = None
-            
-            for i, point in enumerate(discussion_points):
-                # Add subtle background noise for radio effect
-                ambient_noise = AudioSegment.silent(duration=500).overlay(
-                    AudioSegment.silent(duration=500).low_pass_filter(2000)
-                )
+            # Get the average volume of the main part of the segment (after first second)
+            if len(audio_segment) > 1000:  # If segment is longer than 1 second
+                main_part = audio_segment[1000:]  # Get everything after first second
+                target_volume = main_part.dBFS
                 
-                # Map team-specific fan types to generic fan types
-                speaker_type = point["type"]
-                if "Paris Saint Germain" in speaker_type:
-                    speaker_type = "Paris Saint Germain Fan"
-                elif "Inter" in speaker_type:
-                    speaker_type = "Inter Fan"
-                elif "Fan" in speaker_type and not any(team in speaker_type for team in ["Paris Saint Germain", "Inter"]):
-                    speaker_type = "Home Fan" if "Home" in speaker_type else "Away Fan"
+                # Normalize first second to match the target volume
+                first_second = audio_segment[:1000]
+                first_second = first_second.normalize(headroom=0.01)
+                volume_diff = target_volume - first_second.dBFS
+                first_second = first_second + volume_diff
                 
-                config = self.voice_configs.get(speaker_type)
-                if not config:
-                    print(f"No voice configuration found for {speaker_type}")
-                    continue
-                
-                # Select appropriate voice settings based on context
-                settings = config["settings"]
-                if "angry" in point.get("emotion", "").lower() and "angry_settings" in config:
-                    settings = config["angry_settings"]
-                elif "joking" in point.get("emotion", "").lower() and "joking_settings" in config:
-                    settings = config["joking_settings"]
-                
-                # Generate audio and save to temp file
-                temp_file = os.path.join(temp_dir, f"segment_{i}.mp3")
-                audio_data = generate(
-                    text=point["text"],
-                    voice=Voice(
-                        voice_id=config["voice_id"],
-                        settings=settings
-                    )
-                )
-                
-                # Save binary audio data to temp file
-                with open(temp_file, "wb") as f:
-                    f.write(audio_data)
-                
-                # Load as AudioSegment
-                segment = AudioSegment.from_mp3(temp_file)
-                
-                # Add radio effect
-                segment = segment.overlay(ambient_noise, gain_during_overlay=-30)
-                
-                # Add natural pause between different speakers
-                if previous_speaker and previous_speaker != speaker_type:
-                    # Add a pause between different speakers (500ms)
-                    pause_duration = 500  # 500ms pause
-                    pause = AudioSegment.silent(duration=pause_duration)
-                    
-                    # If the previous segment ends with a question mark, add slightly longer pause
-                    if any(point.get("text", "").strip().endswith(c) for c in ["?", "..."]):
-                        pause = AudioSegment.silent(duration=800)  # 800ms pause for questions
-                    
-                    audio_segments.append(pause)
-                
-                # Add crossfade between segments of the same speaker
-                if audio_segments and previous_speaker == speaker_type:
-                    crossfade_duration = 100  # Shorter crossfade for same speaker
-                    if len(audio_segments[-1]) > crossfade_duration and len(segment) > crossfade_duration:
-                        audio_segments[-1] = audio_segments[-1].append(segment, crossfade=crossfade_duration)
-                    else:
-                        audio_segments.append(segment)
-                else:
-                    audio_segments.append(segment)
-                
-                # Add overlap if specified (with delay)
-                if point.get("overlap", 0) > 0 and audio_segments:
-                    previous_segment = audio_segments[-1]
-                    # Add a small delay before overlap (200ms)
-                    overlap_delay = 200
-                    overlap_ms = (point["overlap"] * 1000) + overlap_delay
-                    
-                    if len(previous_segment) > overlap_ms:
-                        mixed = previous_segment[-overlap_ms:].overlay(segment[:overlap_ms])
-                        audio_segments[-1] = previous_segment[:-overlap_ms] + mixed
-                        segment = segment[overlap_ms:]
-                
-                previous_speaker = speaker_type
-            
-            # Combine all segments
-            if not audio_segments:
-                return None
-
-            final_audio = audio_segments[0]
-            for segment in audio_segments[1:]:
-                final_audio += segment
-            
-            # Add subtle compression and EQ for radio effect
-            final_audio = final_audio.compress_dynamic_range()
-            
-            # Save final mixed audio
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = f"panel_discussion_{timestamp}.mp3"
-            filepath = os.path.join(output_dir, filename)
-            
-            final_audio.export(filepath, format="mp3")
-            
-            # Cleanup temp files
-            for file in os.listdir(temp_dir):
-                os.remove(os.path.join(temp_dir, file))
-            os.rmdir(temp_dir)
-            
-            print(f"✅ Mixed audio saved to {filepath}")
-            return filepath
-
+                # Combine the normalized first second with the rest
+                return first_second + main_part
+            else:
+                # If segment is too short, just normalize the whole thing
+                return audio_segment.normalize(headroom=0.01)
         except Exception as e:
-            print(f"❌ Error generating mixed discussion: {e}")
-            return None
+            print(f"❌ Error in segment normalization: {e}")
+            return audio_segment.normalize(headroom=0.01)
 
-    async def generate_speech(self, text: str, speaker: str) -> Optional[str]:
-        """Generate speech with personality-appropriate voice settings"""
+    def _add_speaker_transition(self, audio_segment: AudioSegment, is_new_speaker: bool) -> AudioSegment:
+        """Add minimal transition effects between speakers"""
+        if is_new_speaker:
+            # Add a very short silence buffer (25ms) before new speaker
+            silence = AudioSegment.silent(duration=25)
+            return silence + audio_segment
+        return audio_segment
+
+    async def generate_speech(self, text: str, speaker: str, voice_settings: VoiceSettings) -> Optional[str]:
+        """Generate speech with provided voice settings"""
         try:
-            config = self.voice_configs.get(speaker)
-            if not config:
-                print(f"No voice configuration found for {speaker}")
-                return None
-                
-            # Choose appropriate settings based on content
-            settings = config["settings"]
-            
-            # Detect content type and adjust settings
-            if speaker == "Show Host":
-                if any(keyword in text.lower() for keyword in ["incredible", "amazing", "fantastic", "extraordinary"]):
-                    settings = config["excited_settings"]
-            elif speaker == "Tactical Analyst":
-                if "tactical analysis" in text.lower() or "formation" in text.lower():
-                    settings = config["detailed_settings"]
-            elif speaker == "Stats Expert":
-                if any(keyword in text.lower() for keyword in ["impressive", "significant", "remarkable"]):
-                    settings = config["excited_settings"]
-            
-            # Generate audio with appropriate settings
+            # Generate audio with provided settings
             audio = generate(
                 text=text,
                 voice=Voice(
-                    voice_id=config["voice_id"],
-                    settings=settings
+                    voice_id=voice_settings.voice_id,
+                    settings=voice_settings
                 )
             )
             
             # Save audio with timestamp
-            output_dir = os.path.join(os.getcwd(), "audio")
-            os.makedirs(output_dir, exist_ok=True)
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             filename = f"{speaker.replace(' ', '_')}_{timestamp}.mp3"
-            filepath = os.path.join(output_dir, filename)
+            filepath = os.path.join(self.audio_dir, filename)
             
             with open(filepath, "wb") as f:
                 f.write(audio)
@@ -335,3 +192,32 @@ class TTSService:
         except Exception as e:
             print(f"❌ Error generating speech: {e}")
             return None
+
+    async def generate_segments(self, segments: List[Dict]) -> List[str]:
+        """Generate individual audio segments for each part of the discussion"""
+        segment_files = []
+        
+        for i, segment in enumerate(segments):
+            try:
+                # Generate audio for this segment
+                audio_file = await self.generate_speech(
+                    text=segment["text"],
+                    speaker=segment["type"],
+                    voice_settings=segment["voice_settings"]
+                )
+                
+                if audio_file:
+                    # Rename to segment_X.mp3 format
+                    segment_number = str(i+1).zfill(3)  # 001, 002, etc.
+                    new_filename = f"segment_{segment_number}.mp3"
+                    new_path = os.path.join(self.audio_dir, "temp", new_filename)
+                    
+                    # Move the file to temp directory
+                    os.rename(audio_file, new_path)
+                    segment_files.append(new_path)
+                    
+            except Exception as e:
+                print(f"❌ Error generating segment {i+1}: {e}")
+                continue
+        
+        return segment_files

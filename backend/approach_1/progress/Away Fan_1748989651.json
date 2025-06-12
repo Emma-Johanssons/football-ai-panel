@@ -1,0 +1,6 @@
+{
+  "speaker": "Away Fan",
+  "error": "Error creating video segment for Away Fan: Failed to create video: {\"kind\":\"InsufficientCreditsError\",\"description\":\"not enough credits\"}",
+  "status": "failed",
+  "timestamp": "2025-06-03T22:27:48.734598"
+}

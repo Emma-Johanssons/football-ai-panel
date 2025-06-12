@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  football-ai-panel:
+    build: .
+    volumes:
+      - ./approach_2:/app/approach_2 # Mount approach_2 directory for persistent data
+      - ./.env:/app/.env # Mount .env file for environment variables
+    environment:
+      - PYTHONPATH=/app
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - FFPROBE_PATH=/usr/bin/ffprobe
+    command: tail -f /dev/null # Keep container running without blocking

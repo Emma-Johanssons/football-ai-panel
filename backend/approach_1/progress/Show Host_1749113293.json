@@ -1,0 +1,16 @@
+{
+  "speaker": "Show Host",
+  "content": "Well, that brings us to the end of today's discussion. We've covered some fascinating points about player performance, match statistics, and tactical analysis. I'd like to thank our panel for their expert insights and analysis. Until next time, this has been your host for today's football panel discussion. Thank you for joining us!",
+  "avatar_config": {
+    "image_url": "https://i.imgur.com/p1reirZ.jpeg",
+    "voice_id": "en-US-JennyNeural",
+    "voice_settings": {
+      "rate": 1.2,
+      "style": "chat",
+      "pitch": 1.1
+    }
+  },
+  "status": "error",
+  "error": "Failed to create video",
+  "timestamp": "2025-06-05T10:48:14.589223"
+}

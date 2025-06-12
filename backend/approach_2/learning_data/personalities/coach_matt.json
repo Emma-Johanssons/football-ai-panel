@@ -1,0 +1,11 @@
+{
+  "name": "Coach Matt",
+  "channel": "simply_soccer",
+  "role": "coach",
+  "traits": {
+    "detail_focus": 0.8,
+    "emotion_level": 0.24854811455865788,
+    "topic_expertise": 0.23518064912662712
+  },
+  "last_updated": "2025-06-06T17:16:37.936195"
+}

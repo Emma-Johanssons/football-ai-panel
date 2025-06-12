@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv/
+.venv
+venv/
+venv
+env/
+ENV/
+
+# Audio and Video files
+*.mp3
+*.mp4
+*.wav
+*.avi
+*.mov
+*.mkv
+audio/
+video/
+
+# Logs and temp files
+*.log
+logs/
+*.tmp
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+panel_script_*.txt
+*.mp3
+*.wav
+test_outputs/

@@ -1,0 +1,120 @@
+{
+  "timestamp": "2025-06-03T22:29:07.722125",
+  "segments": [
+    {
+      "speaker": "Show Host",
+      "path": "/app/temp_videos/Show Host_20250603_214342.mp4",
+      "timestamp": "2025-06-03T21:43:42.785550"
+    },
+    {
+      "speaker": "Home Fan",
+      "path": "/app/temp_videos/Home Fan_20250603_215652.mp4",
+      "timestamp": "2025-06-03T21:56:52.440555"
+    },
+    {
+      "speaker": "Home Fan",
+      "path": "/app/temp_videos/Home Fan_20250603_220153.mp4",
+      "timestamp": "2025-06-03T22:01:53.950473"
+    },
+    {
+      "speaker": "Away Fan",
+      "path": "/app/temp_videos/Away Fan_20250603_220304.mp4",
+      "timestamp": "2025-06-03T22:03:04.863491"
+    },
+    {
+      "speaker": "Stats Analyst",
+      "path": "/app/temp_videos/Stats Analyst_20250603_220356.mp4",
+      "timestamp": "2025-06-03T22:03:56.723523"
+    },
+    {
+      "speaker": "Away Fan",
+      "path": "/app/temp_videos/Away Fan_20250603_220502.mp4",
+      "timestamp": "2025-06-03T22:05:02.153715"
+    },
+    {
+      "speaker": "Stats Analyst",
+      "path": "/app/temp_videos/Stats Analyst_20250603_220616.mp4",
+      "timestamp": "2025-06-03T22:06:16.093347"
+    },
+    {
+      "speaker": "Football Coach",
+      "path": "/app/temp_videos/Football Coach_20250603_220705.mp4",
+      "timestamp": "2025-06-03T22:07:05.293329"
+    },
+    {
+      "speaker": "Show Host",
+      "path": "/app/temp_videos/Show Host_20250603_220732.mp4",
+      "timestamp": "2025-06-03T22:07:32.071800"
+    },
+    {
+      "speaker": "Football Coach",
+      "path": "/app/temp_videos/Football Coach_20250603_220935.mp4",
+      "timestamp": "2025-06-03T22:09:35.582805"
+    },
+    {
+      "speaker": "Away Fan",
+      "path": "/app/temp_videos/Away Fan_20250603_221037.mp4",
+      "timestamp": "2025-06-03T22:10:37.881099"
+    },
+    {
+      "speaker": "Home Fan",
+      "path": "/app/temp_videos/Home Fan_20250603_221139.mp4",
+      "timestamp": "2025-06-03T22:11:39.565234"
+    },
+    {
+      "speaker": "Away Fan",
+      "path": "/app/temp_videos/Away Fan_20250603_221229.mp4",
+      "timestamp": "2025-06-03T22:12:29.586129"
+    },
+    {
+      "speaker": "Show Host",
+      "path": "/app/temp_videos/Show Host_20250603_221256.mp4",
+      "timestamp": "2025-06-03T22:12:56.515295"
+    },
+    {
+      "speaker": "Stats Analyst",
+      "path": "/app/temp_videos/Stats Analyst_20250603_221509.mp4",
+      "timestamp": "2025-06-03T22:15:09.518865"
+    },
+    {
+      "speaker": "Away Fan",
+      "path": "/app/temp_videos/Away Fan_20250603_221610.mp4",
+      "timestamp": "2025-06-03T22:16:10.608475"
+    },
+    {
+      "speaker": "Away Fan",
+      "path": "/app/temp_videos/Away Fan_20250603_221715.mp4",
+      "timestamp": "2025-06-03T22:17:15.463657"
+    },
+    {
+      "speaker": "Stats Analyst",
+      "path": "/app/temp_videos/Stats Analyst_20250603_221814.mp4",
+      "timestamp": "2025-06-03T22:18:14.909404"
+    },
+    {
+      "speaker": "Football Coach",
+      "path": "/app/temp_videos/Football Coach_20250603_221907.mp4",
+      "timestamp": "2025-06-03T22:19:07.182145"
+    },
+    {
+      "speaker": "Football Coach",
+      "path": "/app/temp_videos/Football Coach_20250603_222111.mp4",
+      "timestamp": "2025-06-03T22:21:11.335197"
+    },
+    {
+      "speaker": "Stats Analyst",
+      "path": "/app/temp_videos/Stats Analyst_20250603_222227.mp4",
+      "timestamp": "2025-06-03T22:22:27.496688"
+    },
+    {
+      "speaker": "Home Fan",
+      "path": "/app/temp_videos/Home Fan_20250603_222316.mp4",
+      "timestamp": "2025-06-03T22:23:17.011307"
+    },
+    {
+      "speaker": "Stats Analyst",
+      "path": "/app/temp_videos/Stats Analyst_20250603_222433.mp4",
+      "timestamp": "2025-06-03T22:24:33.601177"
+    }
+  ]
+}

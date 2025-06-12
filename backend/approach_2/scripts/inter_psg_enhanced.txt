@@ -1,0 +1,139 @@
+=== Introduction ===
+(Approx. 1.0 min)
+
+Show Host:
+Good evening and welcome to our post-match analysis of this UEFA Champions League clash between PSG and Inter. What a performance we witnessed tonight – PSG absolutely dominant in a 5–0 win that will be talked about for a long time. I’m joined by our tactical analyst and statistics expert to break it all down.
+
+Tonight, we’re diving into every angle – tactics, data, individual brilliance, and the bigger picture. So let’s rewind to the start and unpack what led to such a lopsided scoreline. First things first: the opening 45. How did this unfold so dramatically?
+
+=== First Half ===
+(Approx. 1.5 min)
+
+Tactical Analyst:
+Well, PSG came out with real intent. From the first whistle, they looked sharper, more aggressive, and just more prepared. That early goal by Hakimi in the 12th minute? It said everything. He timed his run perfectly down the right – and credit to Doué for that beautifully weighted pass in behind Inter’s left side. That kind of move doesn’t happen by accident – it was clearly rehearsed.
+
+Show Host:
+And it didn’t just shake Inter, it set the tone for the rest of the half.
+
+Tactical Analyst:
+Absolutely. Inter looked unsure. Even though they were set up in a 3-5-2 to try and dominate the midfield, PSG just bypassed that line entirely. The front three stayed high and wide, and that stretched Inter’s shape. That second goal in the 20th minute? Doué again – brilliant interplay with Dembélé in tight space. Inter were rattled. You could feel it.
+
+Show Host:
+The way PSG pressed was also telling. They didn’t give Inter room to breathe.
+
+Tactical Analyst:
+No, and it wasn’t chaotic pressing either – it was coordinated. Triggered by specific passes. That’s something they’ve clearly worked on.
+
+=== First Half Stats ===
+(Approx. 1.5 min)
+
+Show Host:
+It certainly looked like PSG were in full control. What do the numbers say?
+
+Stats Expert:
+They back it up, absolutely. PSG had 59% possession in the first half, but it wasn’t passive possession – it was purposeful. They had eight shots by halftime, five on target. That tells you a lot about how efficiently they were attacking.
+
+Tactical Analyst:
+And look at the positions they were shooting from – five of those eight shots were from inside the penalty area. That’s high-percentage football.
+
+Stats Expert:
+Exactly. PSG also made five successful recoveries in Inter's final third. That’s high pressing working. And something else – their final third passing accuracy was over 85%. When you're playing that close to the goal and you’re not giving the ball away, that’s danger.
+
+Show Host:
+And Inter?
+
+Stats Expert:
+Only one shot on target in the first half. That’s all. Tells you everything.
+
+=== Second Half Tactics ===
+(Approx. 1.5 min)
+
+Show Host:
+Let’s shift to the second half. Did Inter manage to adjust?
+
+Tactical Analyst:
+They made some changes – Pavard came in for Darmian, Dimarco pushed higher, Mkhitaryan and Bisseck tried to give fresh legs in midfield and backline – but tactically, the shape stayed mostly the same. The issue was PSG’s press didn’t drop.
+
+Show Host:
+So the rhythm of the game never changed.
+
+Tactical Analyst:
+Not really. In fact, PSG looked more confident. The third goal came in the 63rd minute – Doué again. That move started from a throw-in, and within 11 seconds, the ball was in the net. That’s speed and precision.
+
+Stats Expert:
+And again – look at the fouls. Inter committed 13 in total – seven in the second half. That’s usually a sign of frustration and chasing the ball.
+
+Show Host:
+They were losing their grip both tactically and emotionally.
+
+Stats Expert:
+That’s right. Body language was telling. Heads down, lots of gesturing. Meanwhile, PSG were composed.
+
+=== Turning Points ===
+(Approx. 1.0 min)
+
+Show Host:
+Was there a moment you’d call the turning point?
+
+Tactical Analyst:
+Honestly, the second goal. It came early enough – 20th minute – and just broke Inter’s rhythm. From there, PSG didn’t need to take risks. They just controlled the tempo.
+
+Stats Expert:
+And when you look at game state data, Inter’s expected threat after minute 25 drops significantly. That tells you the third goal in the second half was the final nail, but the real damage was done early.
+
+=== Player Performances ===
+(Approx. 1.5 min)
+
+Show Host:
+Let’s talk individuals – who stood out the most?
+
+Tactical Analyst:
+Désiré Doué. Two goals, one assist, and he was always available between the lines. The timing of his runs was excellent. Hakimi was also fantastic – bombing forward, overlapping, recovering. It was a full-back’s masterclass.
+
+Stats Expert:
+And Dembélé – don’t overlook his role. One assist, sure, but his involvement in the build-up was constant. He had 11 progressive carries and completed 5 dribbles. Plus, Doué had 27 touches in the final third – the most of any player on the pitch.
+
+Show Host:
+That speaks volumes. Anyone from Inter stand out at all?
+
+Tactical Analyst:
+Difficult to say. Sommer made a couple of decent saves, but he was left exposed.
+
+Stats Expert:
+Agreed. Barella had some energy early on, but he faded fast. Inter as a unit never got going.
+
+=== Historical Context ===
+(Approx. 1.0 min)
+
+Show Host:
+We’ve seen PSG struggle in big knockout games before – was this a turning point?
+
+Tactical Analyst:
+It felt like it. The composure, the structure – this wasn’t the old PSG. There was no panic, no loss of shape. It was methodical, almost clinical.
+
+Stats Expert:
+One yellow card in 90 minutes while playing at that intensity? That’s remarkable. Also, they allowed only two shots on target in the entire match. Inter had an xG of just 0.39. PSG defended as well as they attacked.
+
+Show Host:
+So maybe this is the PSG we’ve been waiting for.
+
+Tactical Analyst:
+Let’s hope so. If they can replicate this, they’re contenders.
+
+=== Conclusion ===
+(Approx. 1.0 min)
+
+Show Host:
+So, final thoughts?
+
+Tactical Analyst:
+PSG showed tonight that they can manage a big game from start to finish. It wasn’t just the talent – it was the structure. Their pressing, their transitions, the way they used space – it was all spot on.
+
+Stats Expert:
+And the numbers reinforce the eye test: more possession, better pass accuracy, more chances, fewer fouls. It wasn’t just dominant – it was controlled. They earned every bit of that 5–0.
+
+=== Closing ===
+(Approx. 0.5 min)
+
+Show Host:
+That wraps up our analysis of this remarkable match: PSG 5, Inter 0. From Hakimi’s early opener to those late goals by Kvaratskhelia and Mayulu, it was a complete performance from start to finish. Thanks again to our experts, and thank you all for joining us. We’ll see you next time.

@@ -1,7 +1,87 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+*.so
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Vector store and embeddings
+vector_store/
+*.faiss
+*.pkl
+embeddings/
+
+# Virtual Environment
 .env
 .venv/
 .venv
 venv/
 venv
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Audio and Video files
+*.mp3
+*.mp4
+*.wav
+*.avi
+*.mov
+*.mkv
+audio/
+video/
+videos/
+
+# Logs and temporary files
+*.log
+logs/
+log/
+*.tmp
+*.temp
+.coverage
+htmlcov/
+test_outputs/
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific
+panel_script_*.txt
+data/
+temp/
+cache/
+images/
+generated_scripts/
+youtube.com_cookies.txt
+*.sqlite3
+local_settings.py
+
+# Local development
+db.sqlite3
+football_ai_panel.egg-info/
+*.egg-info/ 

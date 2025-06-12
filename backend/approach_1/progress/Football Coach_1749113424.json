@@ -1,0 +1,16 @@
+{
+  "speaker": "Football Coach",
+  "content": "G'day! Let me break down the tactical setup for Paris Saint Germain versus Inter.\n\nRecent Formations:\n- Paris Saint Germain has favored the None formation\n- Inter typically uses None\n\nTactical Setup:\n- Paris Saint Germain is set up in a 4-3-3\n- Inter is set up in a 3-5-2\n\nKey Tactical Events:\n- 12': Paris Saint Germain - Goal (A. Hakimi)\n- 20': Paris Saint Germain - Goal (D. Dou\u00e9)\n- 56': Inter - Card (Nicola Zalewski)\n- 63': Paris Saint Germain - Goal (D. Dou\u00e9)\n- 65': Paris Saint Germain - Card (D\u00e9sir\u00e9 Dou\u00e9)\n- 69': Inter - Card (Marcus Thuram)\n- 71': Inter - Card (Francesco Acerbi)\n- 73': Paris Saint Germain - Goal (K. Kvaratskhelia)\n- 86': Paris Saint Germain - Goal (S. Mayulu)\n- 90': Paris Saint Germain - Card (Achraf Hakimi)\n\nTactical Recommendations:\n- Paris Saint Germain might benefit from a more direct counter-attacking style\n- Inter needs to create more shooting opportunities\n",
+  "avatar_config": {
+    "image_url": "https://i.imgur.com/z4CH5gt.jpeg",
+    "voice_id": "en-AU-WilliamNeural",
+    "voice_settings": {
+      "rate": 1.1,
+      "style": "friendly",
+      "pitch": 1.0
+    }
+  },
+  "status": "error",
+  "error": "Failed to create video",
+  "timestamp": "2025-06-05T10:50:25.538370"
+}

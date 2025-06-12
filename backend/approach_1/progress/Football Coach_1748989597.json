@@ -1,0 +1,6 @@
+{
+  "speaker": "Football Coach",
+  "error": "Error creating video segment for Football Coach: Failed to create video: {\"kind\":\"InsufficientCreditsError\",\"description\":\"not enough credits\"}",
+  "status": "failed",
+  "timestamp": "2025-06-03T22:26:55.898257"
+}

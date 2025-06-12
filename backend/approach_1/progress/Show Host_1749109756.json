@@ -1,0 +1,16 @@
+{
+  "speaker": "Show Host",
+  "content": "Welcome to today's match analysis between Paris Saint Germain and Inter!\n\nToday we'll be breaking down:\n1. Key tactical battles\n2. Player performances\n3. Match statistics\n4. Notable moments\n\nCurrent score: Paris Saint Germain 5 - 0 Inter\n\nWe're coming to you live from Allianz Arena in M\u00fcnchen.\n\nThis is the Final of the UEFA Champions League.\n\nLet's hear from our experts about their thoughts on the match...",
+  "avatar_config": {
+    "image_url": "https://i.imgur.com/p1reirZ.jpeg",
+    "voice_id": "en-US-JennyNeural",
+    "voice_settings": {
+      "rate": 1.2,
+      "style": "chat",
+      "pitch": 1.1
+    }
+  },
+  "status": "error",
+  "error": "Failed to create video",
+  "timestamp": "2025-06-05T07:49:17.144082"
+}

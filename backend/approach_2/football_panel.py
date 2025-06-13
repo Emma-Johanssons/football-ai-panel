@@ -23,9 +23,9 @@ load_dotenv()
 
 # Personality mapping for agents
 PERSONALITY_MAPPING = {
-    "Show Host": "alex_stewart",  # Host personality
-    "Tactical Analyst": "coach_matt",  # Coach personality
-    "Stats Expert": "joe_devine"  # Stats personality
+    "Show Host": "alex_stewart",  
+    "Tactical Analyst": "coach_matt",  
+    "Stats Expert": "joe_devine" 
 }
 
 # Timing guidelines (in seconds) for a 10-minute (600 second) discussion
@@ -83,7 +83,7 @@ class FootballPanel:
             self.players_discussed = set()
             self.events_discussed = set()
                                 
-                            # Initialize match data cache
+             # Initialize match data cache
             self.current_match_data = None
             
             # Initialize services
@@ -131,7 +131,7 @@ class FootballPanel:
             if agent_type == "Show Host":
                 agent = self.host
                 base_prompt = HOST_PROMPT
-                personality = {}  # Host doesn't need a personality
+                personality = {}  
             elif agent_type == "Tactical Analyst":
                 agent = self.coach
                 base_prompt = TACTICAL_PROMPT

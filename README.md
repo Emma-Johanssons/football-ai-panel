@@ -14,10 +14,13 @@ An AI-powered football panel discussion system that generates dynamic conversati
 
 ### Data Processing
 
-- **NLTK**: For natural language processing and sentiment analysis
-- **Speech Recognition**: For analyzing panelist speaking patterns
-- **Pydub**: For audio file manipulation
+- **Pydub**: For audio file manipulation and processing
 - **Python-dotenv**: For environment variable management
+
+### Data Collection Tools (Development Only)
+
+- **NLTK**: Used in development for analyzing YouTube panelist patterns
+- **Speech Recognition**: Used in development for analyzing YouTube audio
 
 ### APIs and Services
 
@@ -70,20 +73,19 @@ docker-compose exec football-ai-panel bash
 
 3. Run the scripts:
 
-````bash
+```bash
 # Generate panel discussion
 python approach_2/football_panel.py <match_id>
 
 # Generate audio (optional)
-python approach_2/generate_audio.py
-
-
+python approach_2/generate_audio.py --script approach_2/scripts/<script_name>.txt
 
 Example with match ID:
-
-```bash
 python approach_2/football_panel.py 1374812
-````
+
+Example with audio generation:
+python approach_2/generate_audio.py --script approach_2/scripts/inter_psg.txt
+```
 
 ### Manual Setup
 
@@ -137,6 +139,38 @@ backend/
 - Uses YouTube video learning for text-to-speech
 - Generates individual audio segments for each speaker
 - Combines segments into a final audio file
+
+## Project Timeline
+
+### Week 1: Core Development
+
+- Created all AI agents with distinct personalities
+- Implemented API integrations (OpenAI, API-Football)
+- Set up basic conversation logic and memory management
+- Developed initial system prompts and personality profiles
+
+### Week 2: Approach 1 - Text-to-Video
+
+- Implemented D-ID integration for avatar generation
+- Tested video generation with AI avatars
+- Faced challenges with avatar synchronization
+- Made strategic decision to pivot to Approach 2 due to time constraints
+
+### Week 2-3: Approach 2 - Text-to-Speech
+
+- Switched focus to audio-based solution
+- Implemented ElevenLabs TTS integration
+- Refined prompt engineering for more natural conversations
+- Fine-tuned voice settings and personality traits
+- Improved conversation syntax and flow
+- Enhanced audio processing and transitions
+
+### Current Focus
+
+- Optimizing prompt engineering
+- Fine-tuning voice settings
+- Improving conversation naturality
+- Enhancing personality consistency
 
 ## Future Development
 
